@@ -379,30 +379,60 @@ const TargetWeightStep = ({ targetWeight, setTargetWeight, currentWeight, goal }
     );
 };
 
-// --- PASO 7: VELOCIDAD ---
+// --- PASO 7: VELOCIDAD (PACE) ---
 const PaceStep = ({ value, onChange, goal }) => {
     const isLosing = goal === 'Perder Grasa';
+    
     const options = [
-        { id: 'relaxed', title: 'Sostenible', desc: isLosing ? '-0.3 kg / semana' : '+0.2 kg / semana', emoji: '🐢' },
-        { id: 'normal', title: 'Equilibrado', desc: isLosing ? '-0.5 kg / semana' : '+0.4 kg / semana', emoji: '🐇' },
-        { id: 'aggressive', title: 'Modo Zenit', desc: isLosing ? '-0.8 kg / semana' : '+0.6 kg / semana', emoji: '🔥' },
+        { 
+            id: 'relaxed', 
+            title: isLosing ? 'Sostenible' : 'Volumen Limpio', 
+            desc: isLosing ? '-0.5 kg / semana' : '+0.2 kg / semana', 
+            emoji: '🌱' 
+        },
+        { 
+            id: 'normal', 
+            title: isLosing ? 'Exigente' : 'Híbrido', 
+            desc: isLosing ? '-1.0 kg / semana' : '+0.4 kg / semana', 
+            emoji: '⚡' 
+        },
+        { 
+            id: 'aggressive', 
+            title: 'MODO ZENIT', 
+            desc: isLosing ? '-1.5 kg / semana' : '+0.6 kg / semana', 
+            emoji: '🔥' 
+        },
     ];
+
     return (
         <View className="flex-1 px-6 pt-8">
-            <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Velocidad</Text>
-            <Text className="text-gray-500 text-lg mb-8 font-medium">¿Qué tan rápido quieres ver cambios?</Text>
+            <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Intensidad</Text>
+            <Text className="text-gray-500 text-lg mb-8 font-medium">Define la agresividad del plan.</Text>
+            
             <View className="gap-y-4">
                 {options.map((opt) => {
                     const isActive = value === opt.id;
                     return (
                         <TouchableOpacity
                             key={opt.id}
-                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(opt.id); }}
-                            className={`p-6 rounded-3xl border-2 flex-row items-center justify-between transition-all active:scale-[0.98] ${isActive ? 'bg-zenitBlack border-zenitBlack shadow-lg shadow-black/20' : 'bg-white border-gray-100'}`}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                onChange(opt.id);
+                            }}
+                            className={`p-6 rounded-3xl border-2 flex-row items-center justify-between transition-all active:scale-[0.98] ${
+                                isActive 
+                                // CAMBIO: Ahora es ROJO (bg-zenitRed)
+                                ? 'bg-zenitRed border-zenitRed shadow-lg shadow-red-500/30' 
+                                : 'bg-white border-gray-100'
+                            }`}
                         >
                             <View>
-                                <Text className={`text-xl font-bold mb-1 ${isActive ? 'text-white' : 'text-zenitBlack'}`}>{opt.title}</Text>
-                                <Text className={`text-sm font-medium ${isActive ? 'text-gray-400' : 'text-gray-500'}`}>{opt.desc}</Text>
+                                <Text className={`text-xl font-bold mb-1 ${isActive ? 'text-white' : 'text-zenitBlack'}`}>
+                                    {opt.title}
+                                </Text>
+                                <Text className={`text-sm font-medium ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                                    {opt.desc}
+                                </Text>
                             </View>
                             <Text className="text-4xl">{opt.emoji}</Text>
                         </TouchableOpacity>
@@ -414,27 +444,47 @@ const PaceStep = ({ value, onChange, goal }) => {
 };
 
 // --- PASO 8: PROYECCIÓN ---
-const ProjectionStep = ({ currentWeight, targetWeight, pace, onNext }) => {
+const ProjectionStep = ({ currentWeight, targetWeight, pace, onNext, goal }) => {
     const diff = Math.abs(currentWeight - targetWeight);
-    const weeklyRate = pace === 'aggressive' ? 0.8 : pace === 'normal' ? 0.5 : 0.3;
-    const weeksNeeded = diff / weeklyRate;
+    const isLosing = goal === 'Perder Grasa';
+
+    let weeklyRate;
+    if (isLosing) {
+        if (pace === 'aggressive') weeklyRate = 1.5;
+        else if (pace === 'normal') weeklyRate = 1.0;
+        else weeklyRate = 0.5;
+    } else {
+        if (pace === 'aggressive') weeklyRate = 0.6;
+        else if (pace === 'normal') weeklyRate = 0.4;
+        else weeklyRate = 0.2;
+    }
+
+    const weeksNeeded = weeklyRate > 0 ? diff / weeklyRate : 0;
     const daysNeeded = Math.round(weeksNeeded * 7);
     
     const date = new Date();
     date.setDate(date.getDate() + daysNeeded);
-    const dateString = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateString = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
     return (
         <View className="flex-1 px-6 pt-10 bg-white justify-between pb-10">
             <View>
                 <View className="flex-row items-center mb-4">
                     <Calendar size={24} color="#EF4444" className="mr-2" />
-                    <Text className="text-zenitRed font-bold uppercase tracking-widest text-xs">TU LÍNEA DE TIEMPO</Text>
+                    <Text className="text-zenitRed font-bold uppercase tracking-widest text-xs">DEADLINE ESTIMADO</Text>
                 </View>
-                <Text className="text-zenitBlack text-5xl font-black leading-tight mb-2">Llegarás el</Text>
-                <Text className="text-zenitRed text-4xl font-black leading-tight mb-8">{dateString}</Text>
+                
+                {/* CAMBIO: Quitamos leading-tight y agregamos padding vertical (py-1) para que no corte la 'g' */}
+                <Text className="text-zenitBlack text-5xl font-black mb-2 py-1">
+                    Llegarás el
+                </Text>
+                
+                <Text className="text-zenitRed text-4xl font-black leading-tight mb-8 uppercase">
+                    {dateString}
+                </Text>
+
                 <Text className="text-gray-500 text-lg font-medium leading-relaxed">
-                    Siguiendo el plan, podrías alcanzar tu meta de <Text className="text-zenitBlack font-bold">{targetWeight}kg</Text> en aproximadamente <Text className="text-zenitBlack font-bold">{daysNeeded} días</Text>.
+                    A este ritmo <Text className="text-zenitBlack font-bold">({weeklyRate}kg/sem)</Text>, alcanzarás tu meta de <Text className="text-zenitBlack font-bold">{targetWeight}kg</Text> en solo <Text className="text-zenitBlack font-bold">{daysNeeded} días</Text>.
                 </Text>
             </View>
 
@@ -444,11 +494,13 @@ const ProjectionStep = ({ currentWeight, targetWeight, pace, onNext }) => {
                     <View className="w-4 h-16 bg-gray-200 rounded-full" />
                     <Text className="text-zenitBlack font-bold mt-2">{currentWeight}</Text>
                 </View>
+                
                 <View className="flex-1 h-32 border-t-2 border-dashed border-gray-200 mx-4 mt-10 relative">
-                     <View className="absolute -top-3 left-[40%] bg-white border border-gray-100 px-3 py-1 rounded-full shadow-sm">
-                        <Text className="text-xs font-bold text-zenitRed">Zenit AI ⚡</Text>
+                     <View className="absolute -top-3 left-[40%] bg-zenitBlack px-3 py-1 rounded-full shadow-lg shadow-black/30">
+                        <Text className="text-xs font-bold text-white">Zenit 🚀</Text>
                      </View>
                 </View>
+
                 <View className="items-center">
                     <Text className="text-gray-400 font-bold mb-2 text-xs">META</Text>
                     <View className="w-4 h-32 bg-zenitRed rounded-full shadow-lg shadow-red-500/30" />
@@ -456,11 +508,15 @@ const ProjectionStep = ({ currentWeight, targetWeight, pace, onNext }) => {
                 </View>
             </View>
 
+            {/* CAMBIO: Botón ROJO y texto corto "ESTADÍSTICAS" */}
             <TouchableOpacity 
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onNext(); }}
-                className="w-full bg-zenitBlack py-5 rounded-full items-center shadow-lg shadow-black/20 flex-row justify-center"
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    onNext();
+                }}
+                className="w-full bg-zenitRed py-5 rounded-full items-center shadow-lg shadow-red-500/30 flex-row justify-center"
             >
-                <Text className="text-white font-bold text-lg mr-2">VER ESTADÍSTICAS</Text>
+                <Text className="text-white font-bold text-lg mr-2">ESTADÍSTICAS</Text>
                 <ArrowRight size={20} color="white" strokeWidth={3} />
             </TouchableOpacity>
         </View>
@@ -611,7 +667,7 @@ export default function OnboardingScreen({ navigation }) {
       case 5: return <GoalStep value={formData.goal} onChange={handleGoalSelection} />;
       case 6: return <TargetWeightStep targetWeight={formData.targetWeight} setTargetWeight={(val) => setFormData(prev => ({...prev, targetWeight: val}))} currentWeight={formData.weight} goal={formData.goal} />;
       case 7: return <PaceStep value={formData.pace} onChange={(val) => setFormData(prev => ({...prev, pace: val}))} goal={formData.goal} />;
-      case 8: return <ProjectionStep currentWeight={formData.weight} targetWeight={formData.targetWeight} pace={formData.pace} onNext={advanceStep} />;
+      case 8: return <ProjectionStep currentWeight={formData.weight} targetWeight={formData.targetWeight} pace={formData.pace} goal={formData.goal} onNext={advanceStep} />;
       case 9: return <SocialProofStep onNext={advanceStep} />;
       case 10: return <ProcessingScreen onFinish={calculatePlan} />;
       case 11: return <FinalResultStep data={formData} calculations={results} onFinish={() => navigation.replace('Home')} />;
