@@ -124,7 +124,8 @@ const BiometricsStep = ({ weight, setWeight, height, setHeight }) => (
             </View>
             <View className="h-[1px] bg-gray-100 mx-6" />
             <View className="w-full py-4">
-                <HorizontalRuler min={40} max={150} value={weight} onChange={setWeight} unit="kg" />
+                {/* CAMBIO: Rango extendido a 300kg */}
+                <HorizontalRuler min={30} max={300} value={weight} onChange={setWeight} unit="kg" />
             </View>
         </View>
     </View>
@@ -143,25 +144,25 @@ const FinalResultStep = ({ onFinish, data, calculations }) => (
             Para <Text className="text-zenitRed font-bold">{data.goal.toLowerCase()}</Text>, tu cuerpo necesita esta gasolina:
         </Text>
         
-        <View className="bg-zenitBlack w-full p-8 rounded-[40px] items-center mb-8 border border-gray-100 shadow-xl shadow-gray-200/50">
-            <Text className="text-white text-8xl font-black tracking-tighter">
+        <View className="bg-white w-full p-8 rounded-[40px] items-center mb-8 border border-gray-100 shadow-xl shadow-gray-200/50">
+            <Text className="text-zenitBlack text-8xl font-black tracking-tighter">
                 {calculations.calories}
             </Text>
             <Text className="text-zenitRed text-sm uppercase font-bold tracking-widest mt-[-5px] mb-8">
                 Calorías Diarias
             </Text>
             <View className="flex-row w-full justify-between px-2">
-                <MacroStat value={calculations.protein} label="Prot" color="text-white" />
-                <View className="w-[1px] bg-gray-700 h-12 self-center" />
-                <MacroStat value={calculations.carbs} label="Carb" color="text-white" />
-                <View className="w-[1px] bg-gray-700 h-12 self-center" />
-                <MacroStat value={calculations.fats} label="Grasa" color="text-white" />
+                <MacroStat value={calculations.protein} label="Prot" color="text-zenitBlack" />
+                <View className="w-[1px] bg-gray-200 h-12 self-center" />
+                <MacroStat value={calculations.carbs} label="Carb" color="text-zenitBlack" />
+                <View className="w-[1px] bg-gray-200 h-12 self-center" />
+                <MacroStat value={calculations.fats} label="Grasa" color="text-zenitBlack" />
             </View>
         </View>
 
         <TouchableOpacity 
             onPress={onFinish}
-            className="w-full bg-zenitRed py-5 rounded-full items-center mb-4 shadow-lg shadow-red-500/40"
+            className="w-full bg-zenitBlack py-5 rounded-full items-center mb-4 shadow-lg shadow-black/20"
         >
             <Text className="text-white font-bold text-lg">GUARDAR Y CONTINUAR</Text>
         </TouchableOpacity>
@@ -223,7 +224,7 @@ export default function OnboardingScreen({ navigation }) {
       case 0: return <HeroStep onNext={advanceStep} />;
       case 1: return <GenderStep value={formData.gender} onChange={(val) => { 
           setFormData(prev => ({...prev, gender: val})); 
-          setTimeout(() => advanceStep(), 50); // Timeout para asegurar feedback visual
+          setTimeout(advanceStep, 50); 
       }} />;
       case 2: return <BiometricsStep 
                         weight={formData.weight} setWeight={(val) => setFormData(prev => ({...prev, weight: val}))}
@@ -231,7 +232,7 @@ export default function OnboardingScreen({ navigation }) {
                      />;
       case 3: return <GoalStep value={formData.goal} onChange={(val) => { 
           setFormData(prev => ({...prev, goal: val})); 
-          setTimeout(() => advanceStep(), 50); // Timeout para asegurar feedback visual
+          setTimeout(advanceStep, 50); 
       }} />;
       case 4: return <ProcessingScreen onFinish={calculatePlan} />;
       case 5: return <FinalResultStep data={formData} calculations={results} onFinish={() => navigation.replace('Home')} />;

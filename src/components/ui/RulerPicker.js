@@ -5,56 +5,102 @@ import Animated, {
   useAnimatedScrollHandler, 
   useAnimatedProps, 
   runOnJS, 
-  scrollTo 
+  useAnimatedRef
 } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-// --- COMPONENTE DE LÍNEA ---
-const RulerLine = React.memo(({ isMajor, type }) => {
+// =====================================================================
+// CONFIGURACIÓN
+// =====================================================================
+const STEP_SIZE = 10;          
+const LINES_PER_CHUNK = 50;    
+const CHUNK_SIZE = STEP_SIZE * LINES_PER_CHUNK; 
+
+// Altura del contenedor vertical
+const CONTAINER_HEIGHT = 256;
+const PADDING_VERTICAL = CONTAINER_HEIGHT / 2;
+
+// --- COMPONENTE DE BLOQUE (CHUNK DINÁMICO) ---
+const RulerChunk = React.memo(({ type, startIndex, segmentsPerUnit, totalLines }) => {
+    // Generamos las 50 líneas
+    const lines = useMemo(() => Array.from({ length: LINES_PER_CHUNK }), []);
+
     if (type === 'vertical') {
         return (
-            <View className="flex-row items-center justify-end h-[10px] w-full pr-4">
-                {/* Línea visual simple */}
-                <View className={`bg-gray-300 rounded-l-full ${isMajor ? 'w-8 h-[2px] bg-zenitBlack' : 'w-4 h-[1px]'}`} />
+            // CAMBIO: Quitamos 'height: CHUNK_SIZE' para que se encoja al final
+            <View style={{ width: '100%' }}> 
+                {lines.map((_, i) => {
+                    const globalIndex = startIndex + i;
+                    
+                    // CAMBIO CLAVE: Si nos pasamos, devolvemos NULL (no ocupa espacio)
+                    if (globalIndex > totalLines) {
+                        return null; 
+                    }
+
+                    const isMajor = globalIndex % 10 === 0;
+                    return (
+                        <View key={i} style={styles.verticalLineContainer}>
+                            <View style={[
+                                styles.verticalLine, 
+                                isMajor ? styles.lineMajor : styles.lineMinor,
+                                styles.lineRoundRight
+                            ]} />
+                        </View>
+                    );
+                })}
             </View>
         );
     }
+    
     // Horizontal
     return (
-        <View style={{ width: 10, justifyContent: 'flex-end', alignItems: 'center' }}> 
-             <View className={`rounded-full ${
-                isMajor ? 'h-10 w-[2px] bg-zenitBlack' : 
-                'h-5 w-[1px] bg-gray-300'
-            }`} />
+        // CAMBIO: Quitamos ancho fijo para que se encoja
+        <View style={{ flexDirection: 'row' }}> 
+            {lines.map((_, i) => {
+                const globalIndex = startIndex + i;
+                
+                // CAMBIO: Null si excede, corta el scroll en seco
+                if (globalIndex > totalLines) {
+                    return null;
+                }
+
+                const isMajor = globalIndex % segmentsPerUnit === 0;
+                return (
+                    <View key={i} style={styles.horizontalLineContainer}>
+                         <View style={[
+                             styles.horizontalLine,
+                             isMajor ? styles.lineHeightMajor : styles.lineHeightMinor,
+                             isMajor ? styles.bgBlack : styles.bgGray
+                         ]} />
+                    </View>
+                );
+            })}
         </View>
     );
 });
 
 // --- REGLA HORIZONTAL (PESO) ---
-export const HorizontalRuler = ({ min, max, value, onChange, unit }) => {
-  const stepSize = 10;
+export const HorizontalRuler = React.memo(({ min, max, value, onChange, unit }) => {
   const segmentsPerUnit = 5; 
-  const totalSteps = (max - min) * segmentsPerUnit;
+  const totalLines = (max - min) * segmentsPerUnit;
+  const totalChunks = Math.ceil((totalLines + 1) / LINES_PER_CHUNK);
+  const data = useMemo(() => Array.from({ length: totalChunks }), [totalChunks]);
   
-  // Optimizacion: Memoizar array
-  const data = useMemo(() => Array.from({ length: totalSteps + 1 }), [totalSteps]);
+  const initialOffset = useMemo(() => (value - min) * segmentsPerUnit * STEP_SIZE, []);
   
-  const scrollX = useSharedValue(0);
-  const flatListRef = useRef(null);
+  const scrollX = useSharedValue(initialOffset);
+  const lastUpdateTime = useRef(0);
 
-  useEffect(() => {
-    const initialOffset = (value - min) * segmentsPerUnit * stepSize;
-    setTimeout(() => {
-        flatListRef.current?.scrollToOffset({ offset: initialOffset, animated: false });
-    }, 100);
-  }, []);
+  const reportValue = (offset, force = false) => {
+    const now = Date.now();
+    if (!force && now - lastUpdateTime.current < 16) return;
+    lastUpdateTime.current = now;
 
-  // Función para reportar valor a JS (evita repetición)
-  const reportValue = (offset) => {
-    const rawVal = min + (offset / stepSize) / segmentsPerUnit;
+    const rawVal = min + (offset / STEP_SIZE) / segmentsPerUnit;
     const rounded = Math.round(rawVal * 10) / 10;
+    
     if (rounded >= min && rounded <= max) {
       onChange(rounded);
     }
@@ -63,54 +109,56 @@ export const HorizontalRuler = ({ min, max, value, onChange, unit }) => {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollX.value = event.contentOffset.x;
-      runOnJS(reportValue)(event.contentOffset.x);
+      runOnJS(reportValue)(event.contentOffset.x, false);
     },
-    // FIX BUG: Asegurar que al terminar de frenar, se actualice el valor final
-    onMomentumEnd: (event) => {
-      runOnJS(reportValue)(event.contentOffset.x);
-    },
-    onScrollEndDrag: (event) => {
-      runOnJS(reportValue)(event.contentOffset.x);
-    }
+    onMomentumEnd: (event) => { runOnJS(reportValue)(event.contentOffset.x, true); },
+    onScrollEndDrag: (event) => { runOnJS(reportValue)(event.contentOffset.x, true); }
   });
 
   const animatedProps = useAnimatedProps(() => {
-    const currentVal = min + (scrollX.value / stepSize) / segmentsPerUnit;
-    const safeVal = Math.min(Math.max(currentVal, min), max);
-    return {
-      text: `${safeVal.toFixed(1)} ${unit}`, 
-    };
+    const currentVal = min + (scrollX.value / STEP_SIZE) / segmentsPerUnit;
+    let displayVal = Math.min(Math.max(currentVal, min), max);
+    return { text: `${displayVal.toFixed(1)}` };
   });
 
   const renderItem = useCallback(({ index }) => {
-    return <RulerLine isMajor={index % segmentsPerUnit === 0} type="horizontal" />;
-  }, []);
+    return (
+        <RulerChunk 
+            type="horizontal" 
+            startIndex={index * LINES_PER_CHUNK} 
+            segmentsPerUnit={segmentsPerUnit}
+            totalLines={totalLines}
+        />
+    );
+  }, [totalLines]);
 
   return (
     <View className="items-center justify-center">
-      <AnimatedTextInput
-        underlineColorAndroid="transparent"
-        editable={false}
-        value={`${value.toFixed(1)} ${unit}`} 
-        animatedProps={animatedProps}
-        style={styles.bigNumber}
-      />
+      <View style={styles.textRowContainer} pointerEvents="none">
+          <AnimatedTextInput
+            underlineColorAndroid="transparent"
+            defaultValue={`${value.toFixed(1)}`} 
+            animatedProps={animatedProps}
+            style={styles.bigNumberUnified}
+          />
+          <Text style={styles.unitText}>{unit}</Text>
+      </View>
       
       <View className="h-24 w-full relative">
         <Animated.FlatList
-          ref={flatListRef}
           data={data}
           horizontal
           showsHorizontalScrollIndicator={false}
-          snapToInterval={stepSize}
+          snapToInterval={STEP_SIZE} 
           decelerationRate="fast"
-          getItemLayout={(data, index) => ({ length: stepSize, offset: stepSize * index, index })}
           
-          // --- FIX DE PANTALLA BLANCA (BLANKING) ---
-          initialNumToRender={50}     // Renderiza más al inicio
-          maxToRenderPerBatch={50}    // Renderiza bloques más grandes
-          windowSize={50}             // Mantiene mucho más contenido en memoria (evita blanco al scrollear atrás)
-          removeClippedSubviews={true}
+          contentOffset={{ x: initialOffset, y: 0 }}
+          
+          // CAMBIO: Quitamos getItemLayout para permitir tamaños dinámicos al final
+          initialNumToRender={3}       
+          maxToRenderPerBatch={2}      
+          windowSize={5}               
+          removeClippedSubviews={true} 
           
           onScroll={scrollHandler}
           scrollEventThrottle={16} 
@@ -124,35 +172,25 @@ export const HorizontalRuler = ({ min, max, value, onChange, unit }) => {
       </View>
     </View>
   );
-};
+});
 
 // --- REGLA VERTICAL (ALTURA) ---
-export const VerticalRuler = ({ min, max, value, onChange, unit }) => {
-  const stepSize = 10;
-  const range = max - min;
+export const VerticalRuler = React.memo(({ min, max, value, onChange, unit }) => {
+  const range = max - min; 
+  const totalChunks = Math.ceil((range + 1) / LINES_PER_CHUNK);
+  const data = useMemo(() => Array.from({ length: totalChunks }), [totalChunks]);
   
-  // FIX BLANKING: Usamos un array simple para mapear un ScrollView normal.
-  // Al ser pocos items (80-100), es más rápido renderizar todo de una vez que virtualizar.
-  const data = useMemo(() => Array.from({ length: range + 1 }), [range]);
+  const initialOffset = useMemo(() => (max - value) * STEP_SIZE, []);
   
-  const scrollY = useSharedValue(0);
-  const scrollViewRef = useRef(null);
+  const scrollY = useSharedValue(initialOffset);
+  const lastUpdateTime = useRef(0);
 
-  useEffect(() => {
-    // FIX INVERTIDO: Ahora Offset 0 es el Mínimo.
-    // Posición inicial: (Valor actual - Mínimo) * paso
-    const initialOffset = (value - min) * stepSize;
-    setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ y: initialOffset, animated: false });
-    }, 100);
-  }, []);
+  const reportValue = (offset, force = false) => {
+    const now = Date.now();
+    if (!force && now - lastUpdateTime.current < 16) return;
+    lastUpdateTime.current = now;
 
-  const reportValue = (offset) => {
-    // FIX INVERTIDO:
-    // Offset 0 (Arriba) = Min.
-    // Offset Max (Abajo) = Max.
-    // Deslizar dedo Arriba (Push Up) -> Offset Aumenta -> Valor Aumenta.
-    const rawVal = min + (offset / stepSize);
+    const rawVal = max - (offset / STEP_SIZE);
     const rounded = Math.round(rawVal);
     
     if (rounded >= min && rounded <= max) {
@@ -163,76 +201,131 @@ export const VerticalRuler = ({ min, max, value, onChange, unit }) => {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      runOnJS(reportValue)(event.contentOffset.y);
+      runOnJS(reportValue)(event.contentOffset.y, false);
     },
-    // FIX BUG STUCK NUMBER:
-    onMomentumEnd: (event) => {
-      runOnJS(reportValue)(event.contentOffset.y);
-    },
-    onScrollEndDrag: (event) => {
-      runOnJS(reportValue)(event.contentOffset.y);
-    }
+    onMomentumEnd: (event) => { runOnJS(reportValue)(event.contentOffset.y, true); },
+    onScrollEndDrag: (event) => { runOnJS(reportValue)(event.contentOffset.y, true); }
   });
 
   const animatedProps = useAnimatedProps(() => {
-    const currentVal = min + (scrollY.value / stepSize);
-    const safeVal = Math.min(Math.max(currentVal, min), max);
-    return {
-      text: `${Math.round(safeVal)}`, 
-    };
+    const currentVal = max - (scrollY.value / STEP_SIZE);
+    let displayVal = Math.min(Math.max(currentVal, min), max);
+    return { text: `${Math.round(displayVal)}` };
   });
 
+  const renderItem = useCallback(({ index }) => {
+    return (
+        <RulerChunk 
+            type="vertical" 
+            startIndex={index * LINES_PER_CHUNK}
+            totalLines={range}
+        />
+    );
+  }, [range]);
+
   return (
-    <View className="flex-row items-center h-80">
-      <View className="h-full w-24 overflow-hidden relative border-r border-gray-100">
-        
-        {/* Cambiamos FlatList por Animated.ScrollView para eliminar parpadeo blanco */}
-        <Animated.ScrollView
-            ref={scrollViewRef}
+    <View className="flex-row items-center h-64 mt-52">
+      <View className="h-full w-24 overflow-hidden relative border-l border-gray-200 ml-2">
+        <Animated.FlatList
+            data={data}
             showsVerticalScrollIndicator={false}
-            snapToInterval={stepSize}
+            snapToInterval={STEP_SIZE}
             decelerationRate="fast"
+            
+            contentOffset={{ x: 0, y: initialOffset }}
+            
+            // CAMBIO: Quitamos getItemLayout. 
+            // Esto permite que el último bloque sea más pequeño y corte el scroll EXACTO.
+            initialNumToRender={3}
+            maxToRenderPerBatch={2}
+            windowSize={5}
+            removeClippedSubviews={true}
+            
             onScroll={scrollHandler}
             scrollEventThrottle={16}
-            contentContainerStyle={{ paddingVertical: 180 }}
-        >
-            {data.map((_, i) => (
-                <RulerLine key={i} isMajor={i % 10 === 0} type="vertical" />
-            ))}
-        </Animated.ScrollView>
+            contentContainerStyle={{ paddingVertical: PADDING_VERTICAL }}
+            renderItem={renderItem}
+            keyExtractor={(_, i) => i.toString()}
+        />
 
-        <View className="absolute top-[50%] right-0 w-full flex-row justify-end items-center pointer-events-none mt-[-1px]">
-             <View className="w-12 h-[3px] bg-zenitRed rounded-l-full shadow-sm shadow-red-500" />
+        <View className="absolute top-[50%] left-0 w-full flex-row justify-start items-center pointer-events-none mt-[-1px]">
+             <View className="w-12 h-[3px] bg-zenitRed rounded-r-full shadow-sm shadow-red-500" />
         </View>
       </View>
 
-      <View className="ml-8 justify-center h-full">
+      <View style={[styles.textRowContainer, { marginLeft: 16 }]} pointerEvents="none">
          <AnimatedTextInput
             underlineColorAndroid="transparent"
-            editable={false}
-            value={`${value}`} 
+            defaultValue={`${value}`} 
             animatedProps={animatedProps}
-            style={styles.bigNumberVertical}
+            style={styles.bigNumberUnified}
          />
-         <Text className="text-2xl text-zenitTextMuted font-medium">{unit}</Text>
+         <Text style={styles.unitText}>{unit}</Text>
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
-    bigNumber: {
-        fontSize: 60, 
+    textRowContainer: {
+        flexDirection: 'row',
+        alignItems: 'baseline', 
+        justifyContent: 'center',
+    },
+    bigNumberUnified: {
+        fontSize: 80, 
         fontFamily: 'System',
         fontWeight: '900', 
         color: '#0A0A0A', 
         textAlign: 'center',
-        marginBottom: 16,
+        includeFontPadding: false,
     },
-    bigNumberVertical: {
-        fontSize: 72, 
-        fontFamily: 'System',
-        fontWeight: '900',
-        color: '#0A0A0A',
+    unitText: {
+        fontSize: 24,
+        fontWeight: '600',
+        color: '#A1A1AA', 
+        marginLeft: 6,
+    },
+    verticalLineContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        height: STEP_SIZE, 
+        width: '100%',
+        paddingLeft: 1,
+    },
+    verticalLine: {
+        backgroundColor: '#D1D5DB', 
+    },
+    horizontalLineContainer: {
+        width: STEP_SIZE, 
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+    },
+    horizontalLine: {
+        borderRadius: 9999,
+    },
+    lineMajor: {
+        width: 32, 
+        height: 2,
+        backgroundColor: '#0A0A0A', 
+    },
+    lineMinor: {
+        width: 16, 
+        height: 1,
+    },
+    lineHeightMajor: {
+        height: 48, 
+        width: 3,
+    },
+    lineHeightMinor: {
+        height: 20, 
+        width: 1,
+    },
+    bgBlack: { backgroundColor: '#0A0A0A' },
+    bgGray: { backgroundColor: '#D1D5DB' },
+    lineRoundRight: {
+        borderTopRightRadius: 9999,
+        borderBottomRightRadius: 9999,
     }
 });
