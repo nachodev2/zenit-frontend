@@ -1,33 +1,22 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, LayoutAnimation, Platform, UIManager, StatusBar as RNStatusBar } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { ChevronLeft, Play } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
 import { HorizontalRuler, VerticalRuler } from '../components/ui/RulerPicker';
 import ProcessingScreen from '../components/onboarding/ProcessingScreen';
 
-// Habilitar animaciones solo si es necesario, con cuidado
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-// Altura segura manual para evitar choques en Android
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? RNStatusBar.currentHeight + 20 : 0;
 
 // --- PASO 1: HERO / VIDEO ---
 const HeroStep = ({ onNext }) => (
   <View className="flex-1 bg-white">
-      {/* Contenedor del Video (ocupa todo el espacio disponible arriba) */}
       <View className="flex-1 bg-gray-50 items-center justify-center relative overflow-hidden">
-           {/* Aquí iría <Video source={...} resizeMode="cover" className="w-full h-full" /> */}
-           
            <View className="absolute items-center justify-center">
                 <View className="w-20 h-20 bg-white/20 rounded-full items-center justify-center mb-4 backdrop-blur-md">
                     <Play size={32} color="#0A0A0A" fill="#0A0A0A" />
                 </View>
                 <Text className="text-gray-400 text-xs uppercase tracking-widest">Video Loop Demo</Text>
            </View>
-
-           {/* Texto superpuesto en la parte inferior del video/imagen */}
            <View className="absolute bottom-10 left-0 right-0 px-6">
                 <Text className="text-zenitBlack text-6xl font-black tracking-tighter text-center mb-1">
                     ZENIT.
@@ -37,8 +26,6 @@ const HeroStep = ({ onNext }) => (
                 </Text>
            </View>
       </View>
-
-      {/* Contenedor de Botones (Fondo Blanco limpio) */}
       <View className="bg-white px-6 py-8 pb-12 rounded-t-3xl mt-[-20px] shadow-lg">
           <TouchableOpacity 
             onPress={onNext}
@@ -46,7 +33,6 @@ const HeroStep = ({ onNext }) => (
           >
             <Text className="text-white font-bold text-lg tracking-wide">INICIAR CALIBRACIÓN</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity className="mt-6">
             <Text className="text-center text-gray-400 font-medium text-sm">
                 ¿Ya tienes cuenta? <Text className="text-zenitBlack font-bold">Inicia sesión</Text>
@@ -63,7 +49,6 @@ const GenderStep = ({ value, onChange }) => {
     <View className="flex-1 px-6 pt-8">
       <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Elegí tu género</Text>
       <Text className="text-gray-500 text-lg mb-12 font-medium">Para calibrar tu metabolismo basal.</Text>
-      
       <View className="gap-y-4">
         {options.map((opt) => {
             const isActive = value === opt;
@@ -71,7 +56,6 @@ const GenderStep = ({ value, onChange }) => {
                 <TouchableOpacity
                     key={opt}
                     onPress={() => onChange(opt)}
-                    // CORRECCIÓN: Usamos bg-zenitRed en lugar de Black
                     className={`py-6 rounded-3xl border-2 items-center ${
                         isActive 
                         ? 'bg-zenitRed border-zenitRed shadow-lg shadow-red-500/30' 
@@ -96,12 +80,10 @@ const GoalStep = ({ value, onChange }) => {
         { title: 'Mantenimiento', desc: 'Rendimiento y energía estable' },
         { title: 'Ganar Músculo', desc: 'Superávit estratégico' }
     ];
-
     return (
         <View className="flex-1 px-6 pt-8">
             <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tu Objetivo</Text>
             <Text className="text-gray-500 text-lg mb-12 font-medium">El algoritmo se ajustará a esto.</Text>
-            
             <View className="gap-y-4">
                 {options.map((opt) => {
                     const isActive = value === opt.title;
@@ -109,7 +91,6 @@ const GoalStep = ({ value, onChange }) => {
                         <TouchableOpacity
                         key={opt.title}
                         onPress={() => onChange(opt.title)}
-                        // CORRECCIÓN: Fondo Rojo al seleccionar
                         className={`p-6 rounded-3xl border-2 items-start ${
                             isActive
                             ? 'bg-zenitRed border-zenitRed shadow-lg shadow-red-500/30' 
@@ -137,40 +118,21 @@ const BiometricsStep = ({ weight, setWeight, height, setHeight }) => (
              <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tus Medidas</Text>
              <Text className="text-gray-500 text-lg font-medium">Desliza las reglas para ajustar.</Text>
         </View>
-        
         <View className="flex-1 justify-center space-y-8">
-            {/* Altura */}
             <View className="px-6 flex-row items-center justify-between h-64">
-                <VerticalRuler 
-                    min={140} 
-                    max={220} 
-                    value={height} 
-                    onChange={setHeight} 
-                    unit="cm" 
-                />
+                <VerticalRuler min={140} max={220} value={height} onChange={setHeight} unit="cm" />
             </View>
-
-            {/* Separador */}
             <View className="h-[1px] bg-gray-100 mx-6" />
-
-            {/* Peso */}
             <View className="w-full py-4">
-                <HorizontalRuler 
-                    min={40} 
-                    max={150} 
-                    value={weight} 
-                    onChange={setWeight} 
-                    unit="kg" 
-                />
+                <HorizontalRuler min={40} max={150} value={weight} onChange={setWeight} unit="kg" />
             </View>
         </View>
     </View>
 );
 
-// --- PASO FINAL: RESULTADO (Tarjeta Blanca) ---
+// --- PASO FINAL: RESULTADO ---
 const FinalResultStep = ({ onFinish, data, calculations }) => (
     <View className="flex-1 px-6 pt-10 items-center justify-center bg-white">
-        
         <Text className="text-zenitRed text-sm font-bold tracking-widest uppercase mb-4">
             ANÁLISIS COMPLETADO
         </Text>
@@ -181,27 +143,25 @@ const FinalResultStep = ({ onFinish, data, calculations }) => (
             Para <Text className="text-zenitRed font-bold">{data.goal.toLowerCase()}</Text>, tu cuerpo necesita esta gasolina:
         </Text>
         
-        {/* CORRECCIÓN: Tarjeta BLANCA con sombra y borde sutil */}
-        <View className="bg-white w-full p-8 rounded-[40px] items-center mb-8 border border-gray-100 shadow-xl shadow-gray-200/50">
-            <Text className="text-zenitBlack text-8xl font-black tracking-tighter">
+        <View className="bg-zenitBlack w-full p-8 rounded-[40px] items-center mb-8 border border-gray-100 shadow-xl shadow-gray-200/50">
+            <Text className="text-white text-8xl font-black tracking-tighter">
                 {calculations.calories}
             </Text>
             <Text className="text-zenitRed text-sm uppercase font-bold tracking-widest mt-[-5px] mb-8">
                 Calorías Diarias
             </Text>
-            
             <View className="flex-row w-full justify-between px-2">
-                <MacroStat value={calculations.protein} label="Prot" color="text-zenitBlack" />
-                <View className="w-[1px] bg-gray-200 h-12 self-center" />
-                <MacroStat value={calculations.carbs} label="Carb" color="text-zenitBlack" />
-                <View className="w-[1px] bg-gray-200 h-12 self-center" />
-                <MacroStat value={calculations.fats} label="Grasa" color="text-zenitBlack" />
+                <MacroStat value={calculations.protein} label="Prot" color="text-white" />
+                <View className="w-[1px] bg-gray-700 h-12 self-center" />
+                <MacroStat value={calculations.carbs} label="Carb" color="text-white" />
+                <View className="w-[1px] bg-gray-700 h-12 self-center" />
+                <MacroStat value={calculations.fats} label="Grasa" color="text-white" />
             </View>
         </View>
 
         <TouchableOpacity 
             onPress={onFinish}
-            className="w-full bg-zenitBlack py-5 rounded-full items-center mb-4 shadow-lg shadow-black/20"
+            className="w-full bg-zenitRed py-5 rounded-full items-center mb-4 shadow-lg shadow-red-500/40"
         >
             <Text className="text-white font-bold text-lg">GUARDAR Y CONTINUAR</Text>
         </TouchableOpacity>
@@ -215,71 +175,46 @@ const MacroStat = ({ value, label, color }) => (
     </View>
 );
 
-
 // --- CONTROLADOR PRINCIPAL ---
-
 export default function OnboardingScreen({ navigation }) {
   const [step, setStep] = useState(0);
-  
   const [formData, setFormData] = useState({
     gender: null,
     goal: null,
-    weight: 75.0, // Decimal
+    weight: 75.0,
     height: 175,
     age: 25, 
   });
-
   const [results, setResults] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
 
-  // CORRECCIÓN: Eliminamos LayoutAnimation en el 'onNext' directo para evitar lag
-  // Solo animamos cuando sea necesario (e.g. con un pequeño delay o solo en botones de texto)
-  const advanceStep = () => {
-    // Si quieres animación, descomenta esto, pero a veces causa el delay de 5s en Android
-    // LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); 
-    setStep(prev => prev + 1);
-  };
-  
-  const goBack = () => {
-    setStep(prev => prev - 1);
-  };
+  const advanceStep = () => setStep(prev => prev + 1);
+  const goBack = () => setStep(prev => prev - 1);
 
   const calculatePlan = () => {
-    // Harris-Benedict Revisada (Más precisa)
     let bmr;
     const w = formData.weight;
     const h = formData.height;
     const a = formData.age;
-
     if (formData.gender === 'Femenino') {
         bmr = 447.593 + (9.247 * w) + (3.098 * h) - (4.330 * a);
     } else {
         bmr = 88.362 + (13.397 * w) + (4.799 * h) - (5.677 * a);
     }
-
-    // Factor Actividad (Base: Ligero/Moderado para empezar)
     let tdee = bmr * 1.375; 
-
-    // Ajuste Meta
     if (formData.goal === 'Perder Grasa') tdee -= 500;
     if (formData.goal === 'Ganar Músculo') tdee += 400;
 
     const calories = Math.round(tdee);
-    
-    // Distribución Macros (Personalizable según meta)
-    // Definición: 40% P / 30% C / 30% G
-    // Normal: 30% P / 40% C / 30% G
-    let pRatio = 0.3;
-    let cRatio = 0.4;
-    let fRatio = 0.3;
-
+    let pRatio = 0.3, cRatio = 0.4, fRatio = 0.3;
     if (formData.goal === 'Perder Grasa') { pRatio = 0.4; cRatio = 0.3; fRatio = 0.3; }
     if (formData.goal === 'Ganar Músculo') { pRatio = 0.3; cRatio = 0.5; fRatio = 0.2; }
 
-    const protein = Math.round((calories * pRatio) / 4);
-    const carbs = Math.round((calories * cRatio) / 4);
-    const fats = Math.round((calories * fRatio) / 9);
-
-    setResults({ calories, protein, carbs, fats });
+    setResults({ 
+        calories, 
+        protein: Math.round((calories * pRatio) / 4), 
+        carbs: Math.round((calories * cRatio) / 4), 
+        fats: Math.round((calories * fRatio) / 9) 
+    });
     advanceStep();
   };
 
@@ -287,9 +222,8 @@ export default function OnboardingScreen({ navigation }) {
     switch(step) {
       case 0: return <HeroStep onNext={advanceStep} />;
       case 1: return <GenderStep value={formData.gender} onChange={(val) => { 
-          // Actualización optimista sin delay
           setFormData(prev => ({...prev, gender: val})); 
-          setTimeout(advanceStep, 150); // Pequeño delay visual para ver el click rojo
+          setTimeout(() => advanceStep(), 50); // Timeout para asegurar feedback visual
       }} />;
       case 2: return <BiometricsStep 
                         weight={formData.weight} setWeight={(val) => setFormData(prev => ({...prev, weight: val}))}
@@ -297,7 +231,7 @@ export default function OnboardingScreen({ navigation }) {
                      />;
       case 3: return <GoalStep value={formData.goal} onChange={(val) => { 
           setFormData(prev => ({...prev, goal: val})); 
-          setTimeout(advanceStep, 150);
+          setTimeout(() => advanceStep(), 50); // Timeout para asegurar feedback visual
       }} />;
       case 4: return <ProcessingScreen onFinish={calculatePlan} />;
       case 5: return <FinalResultStep data={formData} calculations={results} onFinish={() => navigation.replace('Home')} />;
@@ -308,40 +242,26 @@ export default function OnboardingScreen({ navigation }) {
   return (
     <View className="flex-1 bg-white">
       <StatusBar style="dark" />
-      {/* CORRECCIÓN: PaddingTop dinámico para bajar el header */}
       <View style={{ flex: 1, paddingTop: STATUSBAR_HEIGHT }}>
-        
-        {/* Header de Navegación */}
         {step > 0 && step < 4 && (
           <View className="px-4 py-2 flex-row items-center mb-2">
             <TouchableOpacity onPress={goBack} className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-100">
               <ChevronLeft size={24} color="#0A0A0A" />
             </TouchableOpacity>
-            
             <View className="flex-1 mx-4 h-2 bg-gray-100 rounded-full overflow-hidden">
-                <View 
-                    className="h-full bg-zenitRed rounded-full" 
-                    style={{ width: `${(step / 4) * 100}%` }} 
-                />
+                <View className="h-full bg-zenitRed rounded-full" style={{ width: `${(step / 4) * 100}%` }} />
             </View>
             <View className="w-10" /> 
           </View>
         )}
-
         {renderContent()}
-
-        {/* Botón Flotante para Biometría */}
         {step === 2 && (
             <View className="px-6 pb-8 pt-2 bg-white">
-                <TouchableOpacity 
-                    onPress={advanceStep}
-                    className="w-full bg-zenitBlack py-5 rounded-full items-center shadow-lg shadow-black/30"
-                >
+                <TouchableOpacity onPress={advanceStep} className="w-full bg-zenitBlack py-5 rounded-full items-center shadow-lg shadow-black/30">
                     <Text className="text-white font-bold text-lg tracking-wide">CONTINUAR</Text>
                 </TouchableOpacity>
             </View>
         )}
-
       </View>
     </View>
   );

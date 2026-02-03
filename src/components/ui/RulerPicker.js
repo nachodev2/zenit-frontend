@@ -1,64 +1,125 @@
-import React, { useRef } from 'react';
-import { View, Text, ScrollView, Dimensions, Vibration, Platform } from 'react-native';
+import React, { useCallback, useRef, useEffect, useMemo } from 'react';
+import { View, Text, Dimensions, TextInput, StyleSheet } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedScrollHandler, 
+  useAnimatedProps, 
+  runOnJS, 
+  scrollTo 
+} from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+// --- COMPONENTE DE LÍNEA ---
+const RulerLine = React.memo(({ isMajor, type }) => {
+    if (type === 'vertical') {
+        return (
+            <View className="flex-row items-center justify-end h-[10px] w-full pr-4">
+                {/* Línea visual simple */}
+                <View className={`bg-gray-300 rounded-l-full ${isMajor ? 'w-8 h-[2px] bg-zenitBlack' : 'w-4 h-[1px]'}`} />
+            </View>
+        );
+    }
+    // Horizontal
+    return (
+        <View style={{ width: 10, justifyContent: 'flex-end', alignItems: 'center' }}> 
+             <View className={`rounded-full ${
+                isMajor ? 'h-10 w-[2px] bg-zenitBlack' : 
+                'h-5 w-[1px] bg-gray-300'
+            }`} />
+        </View>
+    );
+});
 
 // --- REGLA HORIZONTAL (PESO) ---
 export const HorizontalRuler = ({ min, max, value, onChange, unit }) => {
-  const stepSize = 10; // Espacio entre líneas en píxeles
-  const subSegments = 10; // Divisiones entre enteros (para decimales)
+  const stepSize = 10;
+  const segmentsPerUnit = 5; 
+  const totalSteps = (max - min) * segmentsPerUnit;
   
-  // Generamos más líneas para simular precisión
-  const totalSteps = (max - min) * subSegments; 
+  // Optimizacion: Memoizar array
+  const data = useMemo(() => Array.from({ length: totalSteps + 1 }), [totalSteps]);
   
-  const handleScroll = (event) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    // Fórmula ajustada: Menos recorrido para cambiar el valor
-    const rawValue = min + (offsetX / stepSize) / subSegments * 2; // *2 Acelera el cambio
-    
-    // Redondear a 1 decimal
-    const roundedValue = Math.round(rawValue * 10) / 10;
+  const scrollX = useSharedValue(0);
+  const flatListRef = useRef(null);
 
-    if (roundedValue >= min && roundedValue <= max && roundedValue !== value) {
-        onChange(roundedValue);
+  useEffect(() => {
+    const initialOffset = (value - min) * segmentsPerUnit * stepSize;
+    setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: initialOffset, animated: false });
+    }, 100);
+  }, []);
+
+  // Función para reportar valor a JS (evita repetición)
+  const reportValue = (offset) => {
+    const rawVal = min + (offset / stepSize) / segmentsPerUnit;
+    const rounded = Math.round(rawVal * 10) / 10;
+    if (rounded >= min && rounded <= max) {
+      onChange(rounded);
     }
   };
 
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+      runOnJS(reportValue)(event.contentOffset.x);
+    },
+    // FIX BUG: Asegurar que al terminar de frenar, se actualice el valor final
+    onMomentumEnd: (event) => {
+      runOnJS(reportValue)(event.contentOffset.x);
+    },
+    onScrollEndDrag: (event) => {
+      runOnJS(reportValue)(event.contentOffset.x);
+    }
+  });
+
+  const animatedProps = useAnimatedProps(() => {
+    const currentVal = min + (scrollX.value / stepSize) / segmentsPerUnit;
+    const safeVal = Math.min(Math.max(currentVal, min), max);
+    return {
+      text: `${safeVal.toFixed(1)} ${unit}`, 
+    };
+  });
+
+  const renderItem = useCallback(({ index }) => {
+    return <RulerLine isMajor={index % segmentsPerUnit === 0} type="horizontal" />;
+  }, []);
+
   return (
     <View className="items-center justify-center">
-      <Text className="text-6xl font-black text-zenitBlack mb-4">
-        {value.toFixed(1)} <Text className="text-xl text-zenitTextMuted font-medium">{unit}</Text>
-      </Text>
+      <AnimatedTextInput
+        underlineColorAndroid="transparent"
+        editable={false}
+        value={`${value.toFixed(1)} ${unit}`} 
+        animatedProps={animatedProps}
+        style={styles.bigNumber}
+      />
       
       <View className="h-24 w-full relative">
-        <ScrollView
+        <Animated.FlatList
+          ref={flatListRef}
+          data={data}
           horizontal
           showsHorizontalScrollIndicator={false}
-          snapToInterval={stepSize} 
+          snapToInterval={stepSize}
           decelerationRate="fast"
-          scrollEventThrottle={16} // 16ms = 60fps updates
-          onScroll={handleScroll}
+          getItemLayout={(data, index) => ({ length: stepSize, offset: stepSize * index, index })}
+          
+          // --- FIX DE PANTALLA BLANCA (BLANKING) ---
+          initialNumToRender={50}     // Renderiza más al inicio
+          maxToRenderPerBatch={50}    // Renderiza bloques más grandes
+          windowSize={50}             // Mantiene mucho más contenido en memoria (evita blanco al scrollear atrás)
+          removeClippedSubviews={true}
+          
+          onScroll={scrollHandler}
+          scrollEventThrottle={16} 
           contentContainerStyle={{ paddingHorizontal: width / 2 }}
-        >
-          {Array.from({ length: totalSteps + 1 }).map((_, i) => {
-            const isMajor = i % 10 === 0; // Cada entero
-            const isMedium = i % 5 === 0 && !isMajor; // .5
-            
-            return (
-              <View key={i} className={`justify-end items-center w-[10px]`}> 
-                <View className={`rounded-full ${
-                    isMajor ? 'h-12 w-[3px] bg-zenitBlack' : 
-                    isMedium ? 'h-8 w-[2px] bg-gray-400' :
-                    'h-5 w-[1px] bg-gray-300'
-                }`} />
-              </View>
-            );
-          })}
-        </ScrollView>
-        
-        {/* Indicador Fijo */}
+          renderItem={renderItem}
+          keyExtractor={(_, i) => i.toString()}
+        />
         <View className="absolute bottom-0 left-0 right-0 items-center pointer-events-none pb-2">
-            <View className="w-[4px] h-16 bg-zenitRed rounded-full shadow-sm shadow-red-500" />
+            <View className="w-[4px] h-14 bg-zenitRed rounded-full shadow-sm shadow-red-500" />
         </View>
       </View>
     </View>
@@ -70,60 +131,108 @@ export const VerticalRuler = ({ min, max, value, onChange, unit }) => {
   const stepSize = 10;
   const range = max - min;
   
-  const handleScroll = (event) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    
-    // LÓGICA INVERTIDA: 
-    // Scroll hacia ABAJO (offset positivo) -> AUMENTA valor visualmente (si la regla baja, ves números más altos arriba)
-    // Pero para que se sienta natural como "subir estatura", invertimos:
-    // Si deslizo el dedo hacia abajo, quiero "bajar" la regla para ver los números de arriba (más altos).
-    
-    const rawValue = min + (offsetY / stepSize);
-    const roundedValue = Math.round(rawValue);
+  // FIX BLANKING: Usamos un array simple para mapear un ScrollView normal.
+  // Al ser pocos items (80-100), es más rápido renderizar todo de una vez que virtualizar.
+  const data = useMemo(() => Array.from({ length: range + 1 }), [range]);
+  
+  const scrollY = useSharedValue(0);
+  const scrollViewRef = useRef(null);
 
-    if (roundedValue >= min && roundedValue <= max && roundedValue !== value) {
-        onChange(roundedValue);
+  useEffect(() => {
+    // FIX INVERTIDO: Ahora Offset 0 es el Mínimo.
+    // Posición inicial: (Valor actual - Mínimo) * paso
+    const initialOffset = (value - min) * stepSize;
+    setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: initialOffset, animated: false });
+    }, 100);
+  }, []);
+
+  const reportValue = (offset) => {
+    // FIX INVERTIDO:
+    // Offset 0 (Arriba) = Min.
+    // Offset Max (Abajo) = Max.
+    // Deslizar dedo Arriba (Push Up) -> Offset Aumenta -> Valor Aumenta.
+    const rawVal = min + (offset / stepSize);
+    const rounded = Math.round(rawVal);
+    
+    if (rounded >= min && rounded <= max) {
+      onChange(rounded);
     }
   };
 
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+      runOnJS(reportValue)(event.contentOffset.y);
+    },
+    // FIX BUG STUCK NUMBER:
+    onMomentumEnd: (event) => {
+      runOnJS(reportValue)(event.contentOffset.y);
+    },
+    onScrollEndDrag: (event) => {
+      runOnJS(reportValue)(event.contentOffset.y);
+    }
+  });
+
+  const animatedProps = useAnimatedProps(() => {
+    const currentVal = min + (scrollY.value / stepSize);
+    const safeVal = Math.min(Math.max(currentVal, min), max);
+    return {
+      text: `${Math.round(safeVal)}`, 
+    };
+  });
+
   return (
-    <View className="flex-row items-center h-96">
-      {/* Columna de la Regla */}
+    <View className="flex-row items-center h-80">
       <View className="h-full w-24 overflow-hidden relative border-r border-gray-100">
-        <ScrollView
+        
+        {/* Cambiamos FlatList por Animated.ScrollView para eliminar parpadeo blanco */}
+        <Animated.ScrollView
+            ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
             snapToInterval={stepSize}
             decelerationRate="fast"
+            onScroll={scrollHandler}
             scrollEventThrottle={16}
-            onScroll={handleScroll}
             contentContainerStyle={{ paddingVertical: 180 }}
         >
-            {Array.from({ length: range + 1 }).map((_, i) => {
-                const val = min + i; 
-                const isMajor = val % 10 === 0;
-                
-                return (
-                    <View key={i} className="flex-row items-center justify-end h-[10px] w-full pr-4">
-                         {isMajor && <Text className="mr-2 text-xs text-zenitBlack font-bold">{val}</Text>}
-                        <View className={`bg-gray-300 rounded-l-full ${isMajor ? 'w-8 h-[2px] bg-zenitBlack' : 'w-4 h-[1px]'}`} />
-                    </View>
-                );
-            })}
-        </ScrollView>
-        
-        {/* Indicador Fijo */}
+            {data.map((_, i) => (
+                <RulerLine key={i} isMajor={i % 10 === 0} type="vertical" />
+            ))}
+        </Animated.ScrollView>
+
         <View className="absolute top-[50%] right-0 w-full flex-row justify-end items-center pointer-events-none mt-[-1px]">
              <View className="w-12 h-[3px] bg-zenitRed rounded-l-full shadow-sm shadow-red-500" />
         </View>
       </View>
 
-      {/* Texto Grande */}
       <View className="ml-8 justify-center h-full">
-         <Text className="text-7xl font-black text-zenitBlack">
-            {value} 
-         </Text>
+         <AnimatedTextInput
+            underlineColorAndroid="transparent"
+            editable={false}
+            value={`${value}`} 
+            animatedProps={animatedProps}
+            style={styles.bigNumberVertical}
+         />
          <Text className="text-2xl text-zenitTextMuted font-medium">{unit}</Text>
       </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+    bigNumber: {
+        fontSize: 60, 
+        fontFamily: 'System',
+        fontWeight: '900', 
+        color: '#0A0A0A', 
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    bigNumberVertical: {
+        fontSize: 72, 
+        fontFamily: 'System',
+        fontWeight: '900',
+        color: '#0A0A0A',
+    }
+});
