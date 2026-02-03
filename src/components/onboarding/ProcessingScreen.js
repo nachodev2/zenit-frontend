@@ -1,98 +1,139 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
-import { Check, Cpu } from 'lucide-react-native';
+import { View, Text, Dimensions } from 'react-native';
+import Animated, { 
+    useSharedValue, 
+    useAnimatedStyle, 
+    withSpring, 
+    withTiming, 
+    withRepeat, 
+    Sequence,
+    FadeIn,
+    ZoomIn
+} from 'react-native-reanimated';
+import { Drumstick, Dumbbell, Zap } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const STEPS = [
-  "Analizando biometría basal...",
-  "Calculando gasto energético (TMB)...",
-  "Ajustando déficit calórico agresivo...",
-  "Optimizando distribución de macros...",
-  "Generando Plan Zenit v1.0..."
-];
+const { width } = Dimensions.get('window');
+const ZENIT_GRADIENT = ['#DC2626', '#F97316'];
 
-export default function ProcessingScreen({ onFinish }) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    // Simular carga de barra de progreso
-    const progressInterval = setInterval(() => {
-      setProgress(old => {
-        if (old >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return old + 1; // Velocidad de carga
-      });
-    }, 50);
-
-    // Simular pasos de "Hackeo/Cálculo"
-    const stepInterval = setInterval(() => {
-      setCurrentStepIndex(prev => {
-        if (prev < STEPS.length - 1) return prev + 1;
-        return prev;
-      });
-    }, 1200); // Cambia de texto cada 1.2 segundos
-
-    // Finalizar todo
-    const totalTimeout = setTimeout(() => {
-      onFinish();
-    }, 6000); // 6 segundos totales de drama
-
-    return () => {
-      clearInterval(progressInterval);
-      clearInterval(stepInterval);
-      clearTimeout(totalTimeout);
+const ProcessingScreen = ({ onFinish, pace, goal }) => {
+    const [stepIndex, setStepIndex] = useState(0);
+    const [iconIndex, setIconIndex] = useState(0);
+    
+    // Valores de animación
+    const progress = useSharedValue(0);
+    
+    // Lógica de textos dinámica
+    const getStrategyText = () => {
+        if (pace === 'aggressive') return 'MODO ZENIT 🔥';
+        if (pace === 'normal') return 'Exigente ⚡';
+        return 'Sostenible 🌱';
     };
-  }, []);
 
-  return (
-    <View className="flex-1 bg-zenitWhite justify-center px-8">
-      {/* Icono Central Pulsante */}
-      <View className="items-center mb-12">
-        <View className="w-24 h-24 bg-zenitRed/20 rounded-full items-center justify-center animate-pulse">
-          <Cpu size={48} color="#DC2626" />
-        </View>
-        <Text className="text-white text-4xl font-black mt-6 text-center">
-          {progress}%
-        </Text>
-        <Text className="text-zenitTextMuted text-sm font-medium tracking-widest uppercase mt-2">
-          Sincronizando Sistema
-        </Text>
-      </View>
+    const actionType = goal === 'Perder Grasa' ? 'Déficit' 
+                    : goal === 'Ganar Músculo' ? 'Superávit' 
+                    : 'Ajuste';
 
-      {/* Lista de Checklists */}
-      <View className="space-y-4">
-        {STEPS.map((step, index) => {
-          const isActive = index === currentStepIndex;
-          const isDone = index < currentStepIndex;
-          
-          return (
-            <View key={index} className="flex-row items-center space-x-4 h-8">
-              <View className="w-6 items-center">
-                {isDone ? (
-                  <Check size={20} color="#DC2626" />
-                ) : isActive ? (
-                  <ActivityIndicator size="small" color="#DC2626" />
-                ) : (
-                  <View className="w-2 h-2 rounded-full bg-white" />
-                )}
-              </View>
-              <Text className={`text-base font-medium ${isDone ? 'text-zenitRed' : isActive ? 'text-zenitBlack' : 'text-gray-600'}`}>
-                {step}
-              </Text>
+    const steps = [
+        "Analizando tu biometría...",
+        "Calculando TDEE & Metabolismo...",
+        `Ajustando ${actionType} ${getStrategyText()}...`,
+        "Optimizando macros...",
+        "Finalizando Plan Zenit v1.0"
+    ];
+
+    // Iconos para el ciclo
+    const icons = [
+        { component: Drumstick, color: '#F97316' }, // Naranja
+        { component: Dumbbell, color: '#DC2626' },  // Rojo
+        { component: Zap, color: '#F59E0B' }        // Amarillo/Rayo
+    ];
+
+    const CurrentIcon = icons[iconIndex].component;
+    const currentColor = icons[iconIndex].color;
+
+    useEffect(() => {
+        // 1. Animación de Barra de Progreso (3.5 segundos total)
+        progress.value = withTiming(100, { duration: 3500 });
+
+        // 2. Ciclo de Textos
+        const textInterval = setInterval(() => {
+            setStepIndex(prev => (prev < steps.length - 1 ? prev + 1 : prev));
+        }, 700); // Cambia texto cada 700ms
+
+        // 3. Ciclo de Iconos
+        const iconInterval = setInterval(() => {
+            setIconIndex(prev => (prev + 1) % icons.length);
+        }, 800); // Cambia icono cada 800ms
+
+        // 4. Finalizar
+        const finishTimeout = setTimeout(() => {
+            onFinish();
+        }, 3600);
+
+        return () => {
+            clearInterval(textInterval);
+            clearInterval(iconInterval);
+            clearTimeout(finishTimeout);
+        };
+    }, []);
+
+    // Estilo animado de la barra
+    const progressStyle = useAnimatedStyle(() => ({
+        width: `${progress.value}%`
+    }));
+
+    return (
+        <View className="flex-1 bg-white items-center justify-center px-8">
+            {/* CÍRCULO DE ICONOS ANIMADOS */}
+            <View className="mb-12 relative items-center justify-center">
+                {/* Anillos decorativos de fondo */}
+                <View className="absolute w-40 h-40 rounded-full border border-gray-100" />
+                <View className="absolute w-32 h-32 rounded-full border border-gray-50" />
+                
+                {/* Contenedor del Icono */}
+                <Animated.View 
+                    key={iconIndex} // Clave para reiniciar animación al cambiar
+                    entering={ZoomIn.springify().damping(12)}
+                    className="w-24 h-24 bg-gray-50 rounded-full items-center justify-center shadow-lg shadow-gray-200/50"
+                >
+                    <CurrentIcon size={40} color={currentColor} strokeWidth={2.5} />
+                </Animated.View>
             </View>
-          );
-        })}
-      </View>
-      <View className="absolute bottom-12 left-8 right-8">
-        <View className="h-2 bg-gray-800 rounded-full overflow-hidden">
-          <View 
-            className="h-full bg-zenitRed" 
-            style={{ width: `${progress}%` }} 
-          />
+
+            {/* TEXTOS DE ESTADO */}
+            <View className="h-20 items-center justify-center mb-8 w-full">
+                <Animated.Text 
+                    key={stepIndex} // Clave para animar el cambio de texto
+                    entering={FadeIn.duration(300)}
+                    className="text-2xl font-black text-zenitBlack text-center leading-8"
+                >
+                    {steps[stepIndex]}
+                </Animated.Text>
+            </View>
+
+            {/* BARRA DE CARGA REESTRUCTURADA */}
+            <View className="w-full">
+                <View className="h-3 bg-gray-100 rounded-full overflow-hidden w-full relative">
+                    <Animated.View className="h-full absolute left-0 top-0 bottom-0" style={progressStyle}>
+                        <LinearGradient
+                            colors={ZENIT_GRADIENT}
+                            start={{ x: 0, y: 0 }} 
+                            end={{ x: 1, y: 0 }}
+                            style={{ flex: 1, borderRadius: 999 }}
+                        />
+                    </Animated.View>
+                </View>
+                
+                {/* Porcentaje numérico (Opcional, estilo hacker) */}
+                <View className="flex-row justify-between mt-2">
+                    <Text className="text-xs font-bold text-gray-300 tracking-widest">AI PROCESSING</Text>
+                    {/* Hack sucio para leer el valor compartido en texto plano si se quisiera, 
+                        pero por simplicidad visual lo dejaremos limpio o estático */}
+                </View>
+            </View>
         </View>
-      </View>
-    </View>
-  );
-}
+    );
+};
+
+export default ProcessingScreen;
