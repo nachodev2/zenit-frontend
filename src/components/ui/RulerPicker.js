@@ -225,22 +225,17 @@ export const VerticalRuler = React.memo(({ min, max, value, onChange, unit }) =>
 
   return (
     <View className="flex-row items-center h-64 mt-52">
-      <View className="h-full w-24 overflow-hidden relative border-l border-gray-200 ml-2">
+      <View className="h-full w-24 overflow-hidden relative border-l border-gray-200 ml-0 ">
         <Animated.FlatList
             data={data}
             showsVerticalScrollIndicator={false}
             snapToInterval={STEP_SIZE}
             decelerationRate="fast"
-            
             contentOffset={{ x: 0, y: initialOffset }}
-            
-            // CAMBIO: Quitamos getItemLayout. 
-            // Esto permite que el último bloque sea más pequeño y corte el scroll EXACTO.
             initialNumToRender={3}
             maxToRenderPerBatch={2}
             windowSize={5}
             removeClippedSubviews={true}
-            
             onScroll={scrollHandler}
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingVertical: PADDING_VERTICAL }}
@@ -253,7 +248,7 @@ export const VerticalRuler = React.memo(({ min, max, value, onChange, unit }) =>
         </View>
       </View>
 
-      <View style={[styles.textRowContainer, { marginLeft: 16 }]} pointerEvents="none">
+      <View style={[styles.textRowContainer, { marginLeft: 0 }]} pointerEvents="none">
          <AnimatedTextInput
             underlineColorAndroid="transparent"
             defaultValue={`${value}`} 

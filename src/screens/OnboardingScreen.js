@@ -162,7 +162,7 @@ const FinalResultStep = ({ onFinish, data, calculations }) => (
 
         <TouchableOpacity 
             onPress={onFinish}
-            className="w-full bg-zenitBlack py-5 rounded-full items-center mb-4 shadow-lg shadow-black/20"
+            className="w-full bg-zenitRed py-5 rounded-full items-center mb-4 shadow-lg shadow-black/20"
         >
             <Text className="text-white font-bold text-lg">GUARDAR Y CONTINUAR</Text>
         </TouchableOpacity>
@@ -258,7 +258,7 @@ export default function OnboardingScreen({ navigation }) {
         {renderContent()}
         {step === 2 && (
             <View className="px-6 pb-8 pt-2 bg-white">
-                <TouchableOpacity onPress={advanceStep} className="w-full bg-zenitBlack py-5 rounded-full items-center shadow-lg shadow-black/30">
+                <TouchableOpacity onPress={advanceStep} className="w-full bg-zenitRed py-5 rounded-full items-center shadow-lg shadow-black/30">
                     <Text className="text-white font-bold text-lg tracking-wide">CONTINUAR</Text>
                 </TouchableOpacity>
             </View>
