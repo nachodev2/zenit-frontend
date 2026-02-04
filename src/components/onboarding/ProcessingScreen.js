@@ -1,135 +1,161 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Dimensions } from 'react-native';
+import { View, Text } from 'react-native';
 import Animated, { 
     useSharedValue, 
     useAnimatedStyle, 
-    withSpring, 
     withTiming, 
     withRepeat, 
-    Sequence,
-    FadeIn,
-    ZoomIn
+    Easing,
+    FadeInDown,
 } from 'react-native-reanimated';
-import { Drumstick, Dumbbell, Zap } from 'lucide-react-native';
+import { Zap } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width } = Dimensions.get('window');
 const ZENIT_GRADIENT = ['#DC2626', '#F97316'];
 
 const ProcessingScreen = ({ onFinish, pace, goal }) => {
-    const [stepIndex, setStepIndex] = useState(0);
-    const [iconIndex, setIconIndex] = useState(0);
+    // CONFIGURACIÓN DE TIEMPO
+    const STEP_DURATION = 1500; // 1.5 segundos por paso (más lento para leer)
     
-    // Valores de animación
-    const progress = useSharedValue(0);
-    
-    // Lógica de textos dinámica
+    // Texto dinámico corto
     const getStrategyText = () => {
-        if (pace === 'aggressive') return 'MODO ZENIT 🔥';
-        if (pace === 'normal') return 'Exigente ⚡';
-        return 'Sostenible 🌱';
+        if (pace === 'aggressive') return 'MODO ZENIT';
+        if (pace === 'normal') return 'Estrategia Exigente';
+        return 'Estrategia Sostenible';
     };
 
     const actionType = goal === 'Perder Grasa' ? 'Déficit' 
                     : goal === 'Ganar Músculo' ? 'Superávit' 
-                    : 'Ajuste';
+                    : 'Recomp.';
 
+    // LISTA DE PASOS (Textos cortos y directos)
     const steps = [
-        "Analizando tu biometría...",
-        "Calculando TDEE & Metabolismo...",
+        "Analizando biometría...",
+        "Calculando TDEE...",
         `Ajustando ${actionType} ${getStrategyText()}...`,
-        "Optimizando macros...",
-        "Finalizando Plan Zenit v1.0"
+        "Creando Plan Zenit v1.0..."
     ];
 
-    // Iconos para el ciclo
-    const icons = [
-        { component: Drumstick, color: '#F97316' }, // Naranja
-        { component: Dumbbell, color: '#DC2626' },  // Rojo
-        { component: Zap, color: '#F59E0B' }        // Amarillo/Rayo
-    ];
+    const TOTAL_DURATION = steps.length * STEP_DURATION;
 
-    const CurrentIcon = icons[iconIndex].component;
-    const currentColor = icons[iconIndex].color;
+    const [visibleSteps, setVisibleSteps] = useState(0);
+    
+    // Valores de animación
+    const progress = useSharedValue(0);
+    const spin = useSharedValue(0);
 
     useEffect(() => {
-        // 1. Animación de Barra de Progreso (3.5 segundos total)
-        progress.value = withTiming(100, { duration: 3500 });
+        // 1. Barra de Progreso: Sincronizada EXACTAMENTE con el total de pasos
+        progress.value = withTiming(100, { 
+            duration: TOTAL_DURATION, 
+            easing: Easing.linear 
+        });
 
-        // 2. Ciclo de Textos
-        const textInterval = setInterval(() => {
-            setStepIndex(prev => (prev < steps.length - 1 ? prev + 1 : prev));
-        }, 700); // Cambia texto cada 700ms
+        // 2. Icono Superior (Giro suave)
+        spin.value = withRepeat(
+            withTiming(360, { duration: 2000, easing: Easing.linear }),
+            -1
+        );
 
-        // 3. Ciclo de Iconos
-        const iconInterval = setInterval(() => {
-            setIconIndex(prev => (prev + 1) % icons.length);
-        }, 800); // Cambia icono cada 800ms
+        // 3. Aparición de Pasos (Uno por uno)
+        const interval = setInterval(() => {
+            setVisibleSteps(prev => {
+                if (prev < steps.length) return prev + 1;
+                return prev;
+            });
+        }, STEP_DURATION);
 
-        // 4. Finalizar
+        // 4. Finalizar (Un poquito después de que termine la barra)
         const finishTimeout = setTimeout(() => {
             onFinish();
-        }, 3600);
+        }, TOTAL_DURATION + 500);
+
+        // Iniciar el primer paso inmediatamente
+        setVisibleSteps(1);
 
         return () => {
-            clearInterval(textInterval);
-            clearInterval(iconInterval);
+            clearInterval(interval);
             clearTimeout(finishTimeout);
         };
     }, []);
 
-    // Estilo animado de la barra
+    // Estilos animados
     const progressStyle = useAnimatedStyle(() => ({
         width: `${progress.value}%`
     }));
 
+    const spinStyle = useAnimatedStyle(() => ({
+        transform: [{ rotate: `${spin.value}deg` }]
+    }));
+
     return (
-        <View className="flex-1 bg-white items-center justify-center px-8">
-            {/* CÍRCULO DE ICONOS ANIMADOS */}
-            <View className="mb-12 relative items-center justify-center">
-                {/* Anillos decorativos de fondo */}
-                <View className="absolute w-40 h-40 rounded-full border border-gray-100" />
-                <View className="absolute w-32 h-32 rounded-full border border-gray-50" />
-                
-                {/* Contenedor del Icono */}
-                <Animated.View 
-                    key={iconIndex} // Clave para reiniciar animación al cambiar
-                    entering={ZoomIn.springify().damping(12)}
-                    className="w-24 h-24 bg-gray-50 rounded-full items-center justify-center shadow-lg shadow-gray-200/50"
-                >
-                    <CurrentIcon size={40} color={currentColor} strokeWidth={2.5} />
+        <View className="flex-1 bg-white px-8 justify-between py-24">
+            
+            {/* HEADER SUPERIOR */}
+            <View className="items-center mt-8">
+                <Animated.View style={[spinStyle]} className="mb-6 p-4 bg-gray-50 rounded-full">
+                     <Zap size={32} color="#DC2626" fill="#DC2626" />
                 </Animated.View>
+                <Text className="text-zenitBlack text-3xl font-black text-center mb-1">
+                    Diseñando Plan
+                </Text>
+                <Text className="text-gray-400 font-medium text-sm text-center tracking-wide">
+                    PERSONALIZANDO IA...
+                </Text>
             </View>
 
-            {/* TEXTOS DE ESTADO */}
-            <View className="h-20 items-center justify-center mb-8 w-full">
-                <Animated.Text 
-                    key={stepIndex} // Clave para animar el cambio de texto
-                    entering={FadeIn.duration(300)}
-                    className="text-2xl font-black text-zenitBlack text-center leading-8"
-                >
-                    {steps[stepIndex]}
-                </Animated.Text>
+            {/* LISTA DE PASOS (Clean & Minimal) */}
+            <View className="flex-1 justify-center gap-y-5 pl-4">
+                {steps.map((label, index) => {
+                    // Solo renderizamos si el paso ya "ocurrió"
+                    if (index >= visibleSteps) return null;
+
+                    const isCurrent = index === visibleSteps - 1;
+
+                    return (
+                        <Animated.View 
+                            key={index} 
+                            entering={FadeInDown.duration(500).springify()}
+                            className="flex-row items-center"
+                        >
+                            {/* Indicador Minimalista */}
+                            <View className="w-6 items-center justify-center mr-4">
+                                {isCurrent ? (
+                                    // Punto Rojo Pulsante (Activo)
+                                    <View className="w-2.5 h-2.5 bg-zenitRed rounded-full shadow-sm shadow-red-500" />
+                                ) : (
+                                    // Punto Gris (Completado)
+                                    <View className="w-2 h-2 bg-gray-800 rounded-full opacity-20" />
+                                )}
+                            </View>
+
+                            {/* Texto */}
+                            <Text className={`text-lg font-bold tracking-tight ${
+                                isCurrent ? 'text-zenitBlack' : 'text-gray-300'
+                            }`}>
+                                {label}
+                            </Text>
+                        </Animated.View>
+                    );
+                })}
             </View>
 
-            {/* BARRA DE CARGA REESTRUCTURADA */}
-            <View className="w-full">
-                <View className="h-3 bg-gray-100 rounded-full overflow-hidden w-full relative">
-                    <Animated.View className="h-full absolute left-0 top-0 bottom-0" style={progressStyle}>
+            {/* BARRA DE CARGA */}
+            <View className="w-full mb-4">
+                <View className="flex-row justify-between mb-3">
+                    <Text className="text-[10px] font-bold text-gray-400 tracking-[2px]">PROCESANDO</Text>
+                    <Text className="text-[10px] font-bold text-zenitRed tracking-[2px]">V 1.0</Text>
+                </View>
+                
+                <View className="h-1.5 bg-gray-100 rounded-full overflow-hidden w-full">
+                    <Animated.View className="h-full rounded-full" style={progressStyle}>
                         <LinearGradient
                             colors={ZENIT_GRADIENT}
                             start={{ x: 0, y: 0 }} 
                             end={{ x: 1, y: 0 }}
-                            style={{ flex: 1, borderRadius: 999 }}
+                            style={{ flex: 1 }}
                         />
                     </Animated.View>
-                </View>
-                
-                {/* Porcentaje numérico (Opcional, estilo hacker) */}
-                <View className="flex-row justify-between mt-2">
-                    <Text className="text-xs font-bold text-gray-300 tracking-widest">AI PROCESSING</Text>
-                    {/* Hack sucio para leer el valor compartido en texto plano si se quisiera, 
-                        pero por simplicidad visual lo dejaremos limpio o estático */}
                 </View>
             </View>
         </View>
