@@ -40,7 +40,7 @@ import Svg, { Circle, G } from 'react-native-svg';
 import GesturePicker from '../components/ui/GesturePicker'; 
 import ProcessingScreen from '../components/onboarding/ProcessingScreen';
 
-// --- CONFIGURACIÓN DE SEGURIDAD Y UI ---
+// --- CONFIGURACIÓN ESTRATÉGICA ---
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const { width } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? RNStatusBar.currentHeight + 20 : 0;
@@ -50,7 +50,7 @@ const COLORS = {
     blue: '#2563EB', orange: '#F97316', yellow: '#FACC15', green: '#22C55E',
 };
 
-// RANGOS LÓGICOS (Zenit Guardrails)
+// RANGOS LÓGICOS (Guardrails)
 const LIMITS = {
     calories: { min: 500, max: 8000 },
     protein: { min: 20, max: 500 },
@@ -58,7 +58,84 @@ const LIMITS = {
     fats: { min: 10, max: 300 }
 };
 
-// --- COMPONENTE: ANILLO PREMIUM CON AUTO-SCALING ---
+// --- COMPONENTE: ZENIT SLIDER (ANTI-CRASH SYSTEM) ---
+const ZenitSlider = ({ value, onChange, min, max, step = 0.1 }) => {
+    const SLIDER_WIDTH = width - 48; 
+    const KNOB_SIZE = 32;
+    const MAX_X = SLIDER_WIDTH - KNOB_SIZE;
+    
+    // [IMPORTANTE] Ref para bloquear actualizaciones externas mientras se arrastra
+    // Esto evita el "Crash por Loop de Renderizado"
+    const isDragging = useRef(false);
+
+    const translateX = useSharedValue(0);
+    const context = useSharedValue(0);
+    const scale = useSharedValue(1);
+
+    // Efecto Inteligente: Solo actualiza visualmente si NO estás tocando
+    useEffect(() => {
+        if (!isDragging.current) {
+            const safeValue = Math.max(min, Math.min(max, value));
+            const percentage = (safeValue - min) / (max - min);
+            translateX.value = withSpring(percentage * MAX_X, { damping: 20, stiffness: 150 });
+        }
+    }, [value, min, max]);
+
+    const pan = Gesture.Pan()
+        .onBegin(() => {
+            isDragging.current = true; // BLOQUEAR EXTERNOS
+            context.value = translateX.value;
+            scale.value = withSpring(1.2);
+        })
+        .onUpdate((e) => {
+            let newX = context.value + e.translationX;
+            newX = Math.max(0, Math.min(MAX_X, newX));
+            translateX.value = newX;
+
+            const percentage = newX / MAX_X;
+            const rawValue = min + (percentage * (max - min));
+            
+            // Redondeo matemático preciso
+            const rounded = Math.round(rawValue / step) * step;
+            const finalValue = Number(rounded.toFixed(1));
+            
+            // Enviar cambio al padre (State Update)
+            runOnJS(onChange)(finalValue);
+        })
+        .onFinalize(() => {
+            scale.value = withSpring(1);
+            isDragging.current = false; // LIBERAR BLOQUEO
+        });
+
+    const knobStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: translateX.value }, { scale: scale.value }]
+    }));
+    
+    const progressStyle = useAnimatedStyle(() => ({
+        width: translateX.value + KNOB_SIZE / 2
+    }));
+
+    return (
+        <View style={{ width: SLIDER_WIDTH }} className="h-12 justify-center">
+            {/* Track Fondo */}
+            <View className="absolute left-0 right-0 h-2 bg-gray-100 rounded-full" />
+            
+            {/* Track Progreso (Gradiente) */}
+            <Animated.View className="absolute left-0 h-2 rounded-full overflow-hidden" style={progressStyle}>
+                <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />
+            </Animated.View>
+
+            {/* Knob (Botón) */}
+            <GestureDetector gesture={pan}>
+                <Animated.View style={knobStyle} className="absolute bg-white w-8 h-8 rounded-full shadow-md border border-gray-100 items-center justify-center">
+                    <View className="w-2 h-2 bg-gray-300 rounded-full" />
+                </Animated.View>
+            </GestureDetector>
+        </View>
+    );
+};
+
+// --- COMPONENTE: ANILLO PREMIUM ---
 const PremiumRing = ({ size = 100, strokeWidth = 8, color = COLORS.blue, percentage = 0.75, children }) => {
     const progress = useSharedValue(0);
     const radius = (size - strokeWidth) / 2;
@@ -89,7 +166,71 @@ const PremiumRing = ({ size = 100, strokeWidth = 8, color = COLORS.blue, percent
     );
 };
 
-// --- COMPONENTE: BOTÓN GRADIENTE ---
+// --- COMPONENTE: BOTÓN DESLIZAR (SWIPE) ---
+const SwipeButton = ({ onConfirm }) => {
+    const BUTTON_HEIGHT = 60;
+    const PADDING = 4;
+    const BUTTON_WIDTH = width - 48; 
+    const SWIPEABLE_DIMENSIONS = BUTTON_HEIGHT - 2 * PADDING;
+    const H_SWIPE_RANGE = BUTTON_WIDTH - 2 * PADDING - SWIPEABLE_DIMENSIONS;
+
+    const X = useSharedValue(0);
+    const [toggled, setToggled] = useState(false);
+
+    const animatedStyles = useAnimatedStyle(() => ({
+        transform: [{ translateX: X.value }],
+    }));
+
+    const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+    const fillStyle = useAnimatedStyle(() => ({
+        width: X.value + SWIPEABLE_DIMENSIONS,
+    }));
+
+    const textOpacityStyle = useAnimatedStyle(() => ({
+        opacity: 1 - (X.value / H_SWIPE_RANGE) * 1.5,
+    }));
+
+    const panGesture = Gesture.Pan()
+        .onUpdate((e) => {
+            if (toggled) return;
+            let newValue = e.translationX;
+            if (newValue >= 0 && newValue <= H_SWIPE_RANGE) {
+                X.value = newValue;
+            }
+        })
+        .onEnd(() => {
+            if (toggled) return;
+            if (X.value > H_SWIPE_RANGE * 0.75) {
+                X.value = withSpring(H_SWIPE_RANGE, { damping: 20 });
+                runOnJS(setToggled)(true);
+                runOnJS(Haptics.notificationAsync)(Haptics.NotificationFeedbackType.Success);
+                runOnJS(onConfirm)();
+            } else {
+                X.value = withSpring(0, { damping: 20 });
+            }
+        });
+
+    return (
+        <View className="bg-gray-100 rounded-full justify-center m-0 relative" style={{ width: BUTTON_WIDTH, height: BUTTON_HEIGHT }}>
+            <AnimatedLinearGradient
+                colors={ZENIT_GRADIENT}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={[{ height: BUTTON_HEIGHT, borderRadius: 99, position: 'absolute', left: 0 }, fillStyle]}
+            />
+            <View className="absolute w-full items-center justify-center">
+                <Animated.Text style={[{ fontSize: 14, fontWeight: '800', letterSpacing: 1, color: '#A1A1AA', textTransform: 'uppercase' }, textOpacityStyle]}>
+                    Desliza para comenzar
+                </Animated.Text>
+            </View>
+            <GestureDetector gesture={panGesture}>
+                <Animated.View style={[animatedStyles, { width: SWIPEABLE_DIMENSIONS, height: SWIPEABLE_DIMENSIONS, borderRadius: 99, backgroundColor: 'white', marginLeft: PADDING, alignItems: 'center', justifyContent: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3.84, elevation: 5 }]}>
+                    <ArrowRight size={24} color="#F97316" strokeWidth={3} />
+                </Animated.View>
+            </GestureDetector>
+        </View>
+    );
+};
+
 const GradientButton = ({ onPress, disabled, text, icon: Icon }) => (
     <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.9} className={`w-full ${disabled ? 'opacity-50' : ''} shadow-lg shadow-orange-500/40`}>
         <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="w-full py-5 rounded-full items-center flex-row justify-center">
@@ -99,117 +240,10 @@ const GradientButton = ({ onPress, disabled, text, icon: Icon }) => (
     </TouchableOpacity>
 );
 
-// --- COMPONENTE: ZENIT SLIDER (ANTI-CRASH) ---
-const ZenitSlider = ({ value, onChange, min, max, step = 0.1 }) => {
-    const SLIDER_WIDTH = width - 48; 
-    const KNOB_SIZE = 32;
-    const MAX_X = SLIDER_WIDTH - KNOB_SIZE;
-    
-    // 1. REF PARA BLOQUEAR ACTUALIZACIONES EXTERNAS MIENTRAS ARRASTRAS
-    const isDragging = useRef(false);
-
-    // Valores animados
-    const translateX = useSharedValue(0);
-    const scale = useSharedValue(1);
-    
-    // Contexto para guardar la posición inicial del gesto
-    const context = useSharedValue(0);
-
-    // 2. EFECTO INTELIGENTE:
-    // Solo actualiza la posición visual si NO estás tocando el slider.
-    // Esto evita que el slider "tiemble" o pelee contigo.
-    useEffect(() => {
-        if (!isDragging.current) {
-            // Clamp para seguridad (evita valores fuera de rango)
-            const safeValue = Math.max(min, Math.min(max, value));
-            const percentage = (safeValue - min) / (max - min);
-            translateX.value = withSpring(percentage * MAX_X, { damping: 20 });
-        }
-    }, [value, min, max]);
-
-    // Funciones auxiliares para el thread de JS
-    const startDragging = () => { isDragging.current = true; };
-    const stopDragging = () => { isDragging.current = false; };
-
-    const pan = Gesture.Pan()
-        .onBegin(() => {
-            // Bloqueamos actualizaciones externas
-            runOnJS(startDragging)();
-            
-            // Guardamos dónde estaba el slider al empezar
-            context.value = translateX.value;
-            scale.value = withSpring(1.2);
-        })
-        .onUpdate((e) => {
-            // Calculamos nueva posición desde el punto de inicio guardado (context)
-            let newX = context.value + e.translationX;
-            
-            // Limitamos para no salirnos de la barra
-            newX = Math.max(0, Math.min(MAX_X, newX));
-            translateX.value = newX;
-
-            // Matemática inversa: Posición -> Valor
-            const percentage = newX / MAX_X;
-            const rawValue = min + (percentage * (max - min));
-            
-            // Redondeo preciso
-            const rounded = Math.round(rawValue / step) * step;
-            const finalValue = Number(rounded.toFixed(1));
-
-            // Enviamos el cambio a la app
-            runOnJS(onChange)(finalValue);
-        })
-        .onFinalize(() => {
-            scale.value = withSpring(1);
-            // Liberamos el bloqueo
-            runOnJS(stopDragging)();
-        });
-
-    const knobStyle = useAnimatedStyle(() => ({
-        transform: [
-            { translateX: translateX.value },
-            { scale: scale.value }
-        ]
-    }));
-
-    const progressStyle = useAnimatedStyle(() => ({
-        width: translateX.value + KNOB_SIZE / 2
-    }));
-
-    return (
-        <View style={{ width: SLIDER_WIDTH }} className="h-12 justify-center">
-            {/* Track Fondo */}
-            <View className="absolute left-0 right-0 h-2 bg-gray-100 rounded-full" />
-            
-            {/* Track Progreso (Gradiente) */}
-            <Animated.View className="absolute left-0 h-2 rounded-full overflow-hidden" style={progressStyle}>
-                <LinearGradient 
-                    colors={ZENIT_GRADIENT} 
-                    start={{ x: 0, y: 0 }} 
-                    end={{ x: 1, y: 0 }} 
-                    style={{ flex: 1 }} 
-                />
-            </Animated.View>
-
-            {/* Botón Deslizante */}
-            <GestureDetector gesture={pan}>
-                <Animated.View 
-                    style={knobStyle} 
-                    className="absolute bg-white w-8 h-8 rounded-full shadow-md border border-gray-100 items-center justify-center"
-                >
-                    {/* Decoración centro */}
-                    <View className="w-2 h-2 bg-gray-300 rounded-full" />
-                </Animated.View>
-            </GestureDetector>
-        </View>
-    );
-};
-
 // ==========================================
 // PASOS DEL ONBOARDING
 // ==========================================
 
-// PASO 0
 const HeroStep = ({ onNext }) => (
   <View className="flex-1 bg-white">
       <View className="flex-1 bg-white items-center justify-center relative overflow-hidden">
@@ -233,7 +267,6 @@ const HeroStep = ({ onNext }) => (
   </View>
 );
 
-// PASO 1
 const GenderStep = ({ value, onChange }) => {
   const options = ['Masculino', 'Femenino', 'Otro'];
   return (
@@ -259,7 +292,6 @@ const GenderStep = ({ value, onChange }) => {
   );
 };
 
-// PASO 2
 const BiometricsStep = ({ weight, setWeight, height, setHeight }) => (
     <GestureHandlerRootView style={{ flex: 1 }}>
         <View className="flex-1 pt-4 px-6">
@@ -275,7 +307,6 @@ const BiometricsStep = ({ weight, setWeight, height, setHeight }) => (
     </GestureHandlerRootView>
 );
 
-// PASO 3
 const AgeStep = ({ value, onChange }) => {
     const handlePress = (num) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -300,7 +331,6 @@ const AgeStep = ({ value, onChange }) => {
     );
 };
 
-// PASO 4
 const ActivityStep = ({ value, onChange }) => {
     const levels = [{ id:1.2, title: 'Sedentario', desc: 'Poco o nada de ejercicio', icon: Move }, { id:1.375, title: 'Ligero', desc: 'Ejercicio ligero 1-3 días/sem', icon: Zap }, { id:1.55, title: 'Moderado', desc: 'Ejercicio moderado 3-5 días/sem', icon: Flame }, { id:1.725, title: 'Intenso', desc: 'Ejercicio intenso 6-7 días/sem', icon: Trophy }];
     return (
@@ -325,7 +355,6 @@ const ActivityStep = ({ value, onChange }) => {
     );
 };
 
-// PASO 5
 const GoalStep = ({ value, onChange }) => {
     const options = [{ title: 'Perder Grasa', desc: 'Déficit calórico controlado' }, { title: 'Mantenimiento', desc: 'Rendimiento y energía estable' }, { title: 'Ganar Músculo', desc: 'Superávit estratégico' }];
     return (
@@ -347,7 +376,6 @@ const GoalStep = ({ value, onChange }) => {
     );
 };
 
-// PASO 6
 const TargetWeightStep = ({ targetWeight, setTargetWeight, currentWeight, goal }) => {
     let minLimit, maxLimit;
     const SAFETY_MARGIN = 0.3; 
@@ -370,7 +398,6 @@ const TargetWeightStep = ({ targetWeight, setTargetWeight, currentWeight, goal }
     );
 };
 
-// PASO 7
 const PaceStep = ({ value, onChange, goal }) => {
     const isLosing = goal === 'Perder Grasa';
     const options = [{ id: 'relaxed', title: isLosing ? 'Sostenible' : 'Volumen Limpio', desc: isLosing ? '-0.5 kg / semana' : '+0.2 kg / semana', emoji: '🌱' }, { id: 'normal', title: isLosing ? 'Exigente' : 'Híbrido', desc: isLosing ? '-1.0 kg / semana' : '+0.4 kg / semana', emoji: '⚡' }, { id: 'aggressive', title: 'MODO ZENIT', desc: isLosing ? '-1.5 kg / semana' : '+0.6 kg / semana', emoji: '🔥' }];
@@ -392,7 +419,6 @@ const PaceStep = ({ value, onChange, goal }) => {
     );
 };
 
-// PASO 8
 const ProjectionStep = ({ currentWeight, targetWeight, pace, onNext, goal }) => {
     const diff = Math.abs(currentWeight - targetWeight);
     const isLosing = goal === 'Perder Grasa';
@@ -411,7 +437,6 @@ const ProjectionStep = ({ currentWeight, targetWeight, pace, onNext, goal }) => 
     );
 };
 
-// PASO 9
 const SocialProofStep = ({ onNext }) => (
     <View className="flex-1 px-6 pt-10 bg-white justify-between pb-10">
         <View><View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-6"><Users size={32} color="#0A0A0A" /></View><Text className="text-zenitBlack text-4xl font-black mb-4 leading-tight">El Efecto Zenit.</Text><Text className="text-gray-500 text-lg font-medium leading-relaxed mb-10">Analizamos 10,000 casos. Las personas que siguen un plan adaptativo llegan a su meta <Text className="text-zenitBlack font-bold">3.5x veces más rápido</Text> que con dietas estáticas.</Text><View className="gap-y-6"><View><View className="flex-row justify-between mb-2"><Text className="font-bold text-zenitBlack">Usuario Zenit AI</Text><Text className="font-bold text-zenitRed">3 Meses</Text></View><View className="h-4 bg-gray-100 rounded-full overflow-hidden w-full"><LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="h-full w-[30%] rounded-full" /></View></View><View><View className="flex-row justify-between mb-2"><Text className="font-bold text-gray-400">Dieta Promedio</Text><Text className="font-bold text-gray-400">9 Meses</Text></View><View className="h-4 bg-gray-50 rounded-full overflow-hidden w-full"><View className="h-full bg-gray-300 w-[80%] rounded-full" /></View></View></View></View>
@@ -419,7 +444,7 @@ const SocialProofStep = ({ onNext }) => (
     </View>
 );
 
-// PASO 11: RESULTADO FINAL (MODO RESISTENTE)
+// PASO 11: RESULTADO FINAL (FIX LAYOUT + VALIDACIONES)
 const FinalResultStep = ({ onFinish, data, calculations, setResults }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [errors, setErrors] = useState({});
@@ -478,22 +503,26 @@ const FinalResultStep = ({ onFinish, data, calculations, setResults }) => {
                     ) : (
                         <View className="w-full gap-y-6">
                             <EditField label={`Calorías (${LIMITS.calories.min}-${LIMITS.calories.max})`} value={editValues.calories} error={errors.calories} onChange={(v) => {setEditValues(p=>({...p, calories:v})); validate('calories',v);}} big />
-                            <View className="flex-row gap-x-3">
+                            
+                            {/* LAYOUT FIX: gap reducido */}
+                            <View className="flex-row gap-x-2 w-full">
                                 <EditField label="Proteína" value={editValues.protein} error={errors.protein} color={COLORS.orange} onChange={(v)=>{setEditValues(p=>({...p, protein:v})); validate('protein',v);}} />
                                 <EditField label="Carbos" value={editValues.carbs} error={errors.carbs} color={COLORS.yellow} onChange={(v)=>{setEditValues(p=>({...p, carbs:v})); validate('carbs',v);}} />
                                 <EditField label="Grasas" value={editValues.fats} error={errors.fats} color={COLORS.green} onChange={(v)=>{setEditValues(p=>({...p, fats:v})); validate('fats',v);}} />
                             </View>
-                            <TouchableOpacity onPress={handleSave} className="bg-zenitBlack py-4 rounded-full items-center"><Text className="text-white font-bold uppercase tracking-widest">Confirmar Ajustes</Text></TouchableOpacity>
+                            
+                            <GradientButton text="CONFIRMAR AJUSTES" onPress={handleSave} />
                         </View>
                     )}
                 </View>
             </ScrollView>
-            {!isEditing && <GradientButton text="COMENZAR AHORA" onPress={onFinish} />}
+            
+            {!isEditing && <SwipeButton onConfirm={onFinish} />}
         </View>
     );
 };
 
-// CORRECCIÓN VISUAL: Eliminado px-2 para dar más espacio al texto dentro del anillo
+// COMPONENTES AUXILIARES
 const MacroRingItem = ({ value, label, color }) => (
     <View className="items-center">
         <PremiumRing size={85} strokeWidth={8} color={color} percentage={0.6}>
@@ -504,8 +533,8 @@ const MacroRingItem = ({ value, label, color }) => (
 );
 
 const EditField = ({ label, value, color, error, onChange, big }) => (
-    <View className={`flex-1 bg-gray-50 p-4 rounded-3xl border-2 ${error ? 'border-red-500' : 'border-gray-100'}`}>
-        <Text style={{ color: color || '#A1A1AA' }} className="font-bold text-[10px] uppercase mb-2">{label}</Text>
+    <View className={`flex-1 bg-gray-50 p-3 rounded-3xl border-2 ${error ? 'border-red-500' : 'border-gray-100'}`}>
+        <Text style={{ color: color || '#A1A1AA' }} className="font-bold text-[10px] uppercase mb-2" numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
         <TextInput value={value} onChangeText={onChange} keyboardType="numeric" className={`${big ? 'text-5xl' : 'text-2xl'} font-black text-zenitBlack p-0`} />
     </View>
 );
@@ -519,7 +548,6 @@ export default function OnboardingScreen({ navigation }) {
     const advanceStep = () => setStep(p => p + 1);
     const goBack = () => setStep(p => p - 1);
 
-    // Lógica para asignar peso objetivo inteligente
     const handleGoalSelection = (goal) => {
         let smartTarget = formData.weight;
         if (goal === 'Perder Grasa') smartTarget = formData.weight - 5;
