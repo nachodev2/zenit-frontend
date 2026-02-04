@@ -35,22 +35,36 @@ import Animated, {
     Easing 
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient'; 
-import Svg, { Circle, G } from 'react-native-svg';
+import Svg, { Circle, G, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
+// Asegúrate de que las rutas sean correctas en tu proyecto
 import GesturePicker from '../components/ui/GesturePicker'; 
 import ProcessingScreen from '../components/onboarding/ProcessingScreen';
 
-// --- CONFIGURACIÓN ESTRATÉGICA ---
+// --- CONFIGURACIÓN ---
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const { width } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? RNStatusBar.currentHeight + 20 : 0;
 
+// PALETA DE GRADIENTES
 const ZENIT_GRADIENT = ['#DC2626', '#F97316'];
-const COLORS = {
-    blue: '#2563EB', orange: '#F97316', yellow: '#FACC15', green: '#22C55E',
+
+const GRADIENTS = {
+    blue:   ['#2563EB', '#60A5FA'], // Azul Eléctrico -> Azul Cielo
+    orange: ['#EA580C', '#FDBA74'], // Naranja Intenso -> Durazno
+    yellow: ['#CA8A04', '#FDE047'], // Dorado -> Amarillo Sol
+    green:  ['#16A34A', '#86EFAC'], // Verde Bosque -> Verde Menta
 };
 
-// RANGOS LÓGICOS (Guardrails)
+// --- [CORRECCIÓN] RESTAURADO COLORS PARA LOS TEXTOS ---
+const COLORS = {
+    blue: '#2563EB', 
+    orange: '#F97316', 
+    yellow: '#FACC15', 
+    green: '#22C55E',
+};
+
+// RANGOS LÓGICOS
 const LIMITS = {
     calories: { min: 500, max: 8000 },
     protein: { min: 20, max: 500 },
@@ -58,85 +72,8 @@ const LIMITS = {
     fats: { min: 10, max: 300 }
 };
 
-// --- COMPONENTE: ZENIT SLIDER (ANTI-CRASH SYSTEM) ---
-const ZenitSlider = ({ value, onChange, min, max, step = 0.1 }) => {
-    const SLIDER_WIDTH = width - 48; 
-    const KNOB_SIZE = 32;
-    const MAX_X = SLIDER_WIDTH - KNOB_SIZE;
-    
-    // [IMPORTANTE] Ref para bloquear actualizaciones externas mientras se arrastra
-    // Esto evita el "Crash por Loop de Renderizado"
-    const isDragging = useRef(false);
-
-    const translateX = useSharedValue(0);
-    const context = useSharedValue(0);
-    const scale = useSharedValue(1);
-
-    // Efecto Inteligente: Solo actualiza visualmente si NO estás tocando
-    useEffect(() => {
-        if (!isDragging.current) {
-            const safeValue = Math.max(min, Math.min(max, value));
-            const percentage = (safeValue - min) / (max - min);
-            translateX.value = withSpring(percentage * MAX_X, { damping: 20, stiffness: 150 });
-        }
-    }, [value, min, max]);
-
-    const pan = Gesture.Pan()
-        .onBegin(() => {
-            isDragging.current = true; // BLOQUEAR EXTERNOS
-            context.value = translateX.value;
-            scale.value = withSpring(1.2);
-        })
-        .onUpdate((e) => {
-            let newX = context.value + e.translationX;
-            newX = Math.max(0, Math.min(MAX_X, newX));
-            translateX.value = newX;
-
-            const percentage = newX / MAX_X;
-            const rawValue = min + (percentage * (max - min));
-            
-            // Redondeo matemático preciso
-            const rounded = Math.round(rawValue / step) * step;
-            const finalValue = Number(rounded.toFixed(1));
-            
-            // Enviar cambio al padre (State Update)
-            runOnJS(onChange)(finalValue);
-        })
-        .onFinalize(() => {
-            scale.value = withSpring(1);
-            isDragging.current = false; // LIBERAR BLOQUEO
-        });
-
-    const knobStyle = useAnimatedStyle(() => ({
-        transform: [{ translateX: translateX.value }, { scale: scale.value }]
-    }));
-    
-    const progressStyle = useAnimatedStyle(() => ({
-        width: translateX.value + KNOB_SIZE / 2
-    }));
-
-    return (
-        <View style={{ width: SLIDER_WIDTH }} className="h-12 justify-center">
-            {/* Track Fondo */}
-            <View className="absolute left-0 right-0 h-2 bg-gray-100 rounded-full" />
-            
-            {/* Track Progreso (Gradiente) */}
-            <Animated.View className="absolute left-0 h-2 rounded-full overflow-hidden" style={progressStyle}>
-                <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />
-            </Animated.View>
-
-            {/* Knob (Botón) */}
-            <GestureDetector gesture={pan}>
-                <Animated.View style={knobStyle} className="absolute bg-white w-8 h-8 rounded-full shadow-md border border-gray-100 items-center justify-center">
-                    <View className="w-2 h-2 bg-gray-300 rounded-full" />
-                </Animated.View>
-            </GestureDetector>
-        </View>
-    );
-};
-
-// --- COMPONENTE: ANILLO PREMIUM ---
-const PremiumRing = ({ size = 100, strokeWidth = 8, color = COLORS.blue, percentage = 0.75, children }) => {
+// --- COMPONENTE: ANILLO PREMIUM CON GRADIENTE (CÍRCULO COMPLETO) ---
+const PremiumRing = ({ size = 100, strokeWidth = 8, gradientColors = GRADIENTS.blue, percentage = 0.75, id = "ring", children }) => {
     const progress = useSharedValue(0);
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -153,11 +90,28 @@ const PremiumRing = ({ size = 100, strokeWidth = 8, color = COLORS.blue, percent
     return (
         <View style={{ width: size, height: size }} className="items-center justify-center">
             <Svg width={size} height={size} style={{ position: 'absolute' }}>
-                <G origin={`${center}, ${center}`}>
-                    <Circle cx={center} cy={center} r={radius} stroke="#F3F4F6" strokeWidth={strokeWidth / 2} fill="transparent" />
+                <Defs>
+                    <SvgLinearGradient id={`grad_${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <Stop offset="0%" stopColor={gradientColors[0]} stopOpacity="1" />
+                        <Stop offset="100%" stopColor={gradientColors[1]} stopOpacity="1" />
+                    </SvgLinearGradient>
+                </Defs>
+                
+                {/* Rotamos -90 para empezar arriba */}
+                <G origin={`${center}, ${center}`} rotation="-90">
+                    {/* Track Fondo */}
+                    <Circle 
+                        cx={center} cy={center} r={radius} 
+                        stroke="#F3F4F6" strokeWidth={strokeWidth} fill="transparent" 
+                    />
+                    {/* Progreso con Gradiente */}
                     <AnimatedCircle
-                        stroke={color} cx={center} cy={center} r={radius} strokeWidth={strokeWidth} fill="transparent"
-                        strokeDasharray={circumference} animatedProps={animatedProps} strokeLinecap="round" transform={`rotate(-90 ${center} ${center})`}
+                        stroke={`url(#grad_${id})`} 
+                        cx={center} cy={center} r={radius} 
+                        strokeWidth={strokeWidth} fill="transparent"
+                        strokeDasharray={circumference} 
+                        animatedProps={animatedProps} 
+                        strokeLinecap="round" 
                     />
                 </G>
             </Svg>
@@ -166,7 +120,17 @@ const PremiumRing = ({ size = 100, strokeWidth = 8, color = COLORS.blue, percent
     );
 };
 
-// --- COMPONENTE: BOTÓN DESLIZAR (SWIPE) ---
+// --- COMPONENTE: BOTÓN GRADIENTE ---
+const GradientButton = ({ onPress, disabled, text, icon: Icon }) => (
+    <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.9} className={`w-full ${disabled ? 'opacity-50' : ''} shadow-lg shadow-orange-500/40`}>
+        <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="w-full py-5 rounded-full items-center flex-row justify-center">
+            <Text className="text-white font-bold text-lg tracking-wide mr-2">{text}</Text>
+            {Icon && <Icon size={20} color="white" strokeWidth={3} />}
+        </LinearGradient>
+    </TouchableOpacity>
+);
+
+// --- COMPONENTE: BOTÓN SWIPE ---
 const SwipeButton = ({ onConfirm }) => {
     const BUTTON_HEIGHT = 60;
     const PADDING = 4;
@@ -177,18 +141,10 @@ const SwipeButton = ({ onConfirm }) => {
     const X = useSharedValue(0);
     const [toggled, setToggled] = useState(false);
 
-    const animatedStyles = useAnimatedStyle(() => ({
-        transform: [{ translateX: X.value }],
-    }));
-
+    const animatedStyles = useAnimatedStyle(() => ({ transform: [{ translateX: X.value }] }));
     const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
-    const fillStyle = useAnimatedStyle(() => ({
-        width: X.value + SWIPEABLE_DIMENSIONS,
-    }));
-
-    const textOpacityStyle = useAnimatedStyle(() => ({
-        opacity: 1 - (X.value / H_SWIPE_RANGE) * 1.5,
-    }));
+    const fillStyle = useAnimatedStyle(() => ({ width: X.value + SWIPEABLE_DIMENSIONS }));
+    const textOpacityStyle = useAnimatedStyle(() => ({ opacity: 1 - (X.value / H_SWIPE_RANGE) * 1.5 }));
 
     const panGesture = Gesture.Pan()
         .onUpdate((e) => {
@@ -212,16 +168,8 @@ const SwipeButton = ({ onConfirm }) => {
 
     return (
         <View className="bg-gray-100 rounded-full justify-center m-0 relative" style={{ width: BUTTON_WIDTH, height: BUTTON_HEIGHT }}>
-            <AnimatedLinearGradient
-                colors={ZENIT_GRADIENT}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={[{ height: BUTTON_HEIGHT, borderRadius: 99, position: 'absolute', left: 0 }, fillStyle]}
-            />
-            <View className="absolute w-full items-center justify-center">
-                <Animated.Text style={[{ fontSize: 14, fontWeight: '800', letterSpacing: 1, color: '#A1A1AA', textTransform: 'uppercase' }, textOpacityStyle]}>
-                    Desliza para comenzar
-                </Animated.Text>
-            </View>
+            <AnimatedLinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[{ height: BUTTON_HEIGHT, borderRadius: 99, position: 'absolute', left: 0 }, fillStyle]} />
+            <View className="absolute w-full items-center justify-center"><Animated.Text style={[{ fontSize: 14, fontWeight: '800', letterSpacing: 1, color: '#A1A1AA', textTransform: 'uppercase' }, textOpacityStyle]}>Desliza para comenzar</Animated.Text></View>
             <GestureDetector gesture={panGesture}>
                 <Animated.View style={[animatedStyles, { width: SWIPEABLE_DIMENSIONS, height: SWIPEABLE_DIMENSIONS, borderRadius: 99, backgroundColor: 'white', marginLeft: PADDING, alignItems: 'center', justifyContent: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3.84, elevation: 5 }]}>
                     <ArrowRight size={24} color="#F97316" strokeWidth={3} />
@@ -231,148 +179,105 @@ const SwipeButton = ({ onConfirm }) => {
     );
 };
 
-const GradientButton = ({ onPress, disabled, text, icon: Icon }) => (
-    <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.9} className={`w-full ${disabled ? 'opacity-50' : ''} shadow-lg shadow-orange-500/40`}>
-        <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="w-full py-5 rounded-full items-center flex-row justify-center">
-            <Text className="text-white font-bold text-lg tracking-wide mr-2">{text}</Text>
-            {Icon && <Icon size={20} color="white" strokeWidth={3} />}
-        </LinearGradient>
-    </TouchableOpacity>
-);
+// --- COMPONENTE: ZENIT SLIDER (ANTI-CRASH) ---
+const ZenitSlider = ({ value, onChange, min, max, step = 0.1 }) => {
+    const SLIDER_WIDTH = width - 48; 
+    const KNOB_SIZE = 32;
+    const MAX_X = SLIDER_WIDTH - KNOB_SIZE;
+    
+    // [IMPORTANTE] Ref para evitar bucle infinito
+    const isDragging = useRef(false);
 
-// ==========================================
-// PASOS DEL ONBOARDING
-// ==========================================
+    const translateX = useSharedValue(0);
+    const context = useSharedValue(0);
+    const scale = useSharedValue(1);
+
+    // Efecto Inteligente
+    useEffect(() => {
+        if (!isDragging.current) {
+            const safeValue = Math.max(min, Math.min(max, value));
+            const percentage = (safeValue - min) / (max - min);
+            translateX.value = withSpring(percentage * MAX_X, { damping: 20 });
+        }
+    }, [value, min, max]);
+
+    const startDragging = () => { isDragging.current = true; };
+    const stopDragging = () => { isDragging.current = false; };
+
+    const pan = Gesture.Pan()
+        .onBegin(() => {
+            runOnJS(startDragging)(); 
+            context.value = translateX.value;
+            scale.value = withSpring(1.2);
+        })
+        .onUpdate((e) => {
+            let newX = context.value + e.translationX;
+            newX = Math.max(0, Math.min(MAX_X, newX));
+            translateX.value = newX;
+            const percentage = newX / MAX_X;
+            const rawValue = min + (percentage * (max - min));
+            const rounded = Math.round(rawValue / step) * step;
+            runOnJS(onChange)(Number(rounded.toFixed(1)));
+        })
+        .onFinalize(() => {
+            scale.value = withSpring(1);
+            runOnJS(stopDragging)(); 
+        });
+
+    const knobStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }, { scale: scale.value }] }));
+    const progressStyle = useAnimatedStyle(() => ({ width: translateX.value + KNOB_SIZE / 2 }));
+
+    return (
+        <View style={{ width: SLIDER_WIDTH }} className="h-12 justify-center">
+            <View className="absolute left-0 right-0 h-2 bg-gray-100 rounded-full" />
+            <Animated.View className="absolute left-0 h-2 rounded-full overflow-hidden" style={progressStyle}><LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} /></Animated.View>
+            <GestureDetector gesture={pan}><Animated.View style={knobStyle} className="absolute bg-white w-8 h-8 rounded-full shadow-md border border-gray-100 items-center justify-center"><View className="w-2 h-2 bg-gray-300 rounded-full" /></Animated.View></GestureDetector>
+        </View>
+    );
+};
+
+// ================= PASOS ONBOARDING =================
 
 const HeroStep = ({ onNext }) => (
   <View className="flex-1 bg-white">
       <View className="flex-1 bg-white items-center justify-center relative overflow-hidden">
-           <View className="absolute items-center justify-center">
-                <View className="w-20 h-20 bg-gray-50 rounded-full items-center justify-center mb-4">
-                    <Play size={32} color="#0A0A0A" fill="#0A0A0A" />
-                </View>
-                <Text className="text-gray-400 text-xs uppercase tracking-widest">Video Loop Demo</Text>
-           </View>
-           <View className="absolute bottom-10 left-0 right-0 px-6">
-                <Text className="text-zenitBlack text-6xl font-black tracking-tighter text-center mb-1">ZENIT.</Text>
-                <Text className="text-zenitTextMuted text-2xl font-medium tracking-tight text-center">No hay techo.</Text>
-           </View>
+           <View className="absolute items-center justify-center"><View className="w-20 h-20 bg-gray-50 rounded-full items-center justify-center mb-4"><Play size={32} color="#0A0A0A" fill="#0A0A0A" /></View><Text className="text-gray-400 text-xs uppercase tracking-widest">Video Loop Demo</Text></View>
+           <View className="absolute bottom-10 left-0 right-0 px-6"><Text className="text-zenitBlack text-6xl font-black tracking-tighter text-center mb-1">ZENIT.</Text><Text className="text-zenitTextMuted text-2xl font-medium tracking-tight text-center">No hay techo.</Text></View>
       </View>
-      <View className="bg-white px-6 py-8 pb-12 rounded-t-3xl shadow-sm">
-          <GradientButton text="INICIAR CALIBRACIÓN" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onNext(); }} />
-          <TouchableOpacity className="mt-6">
-            <Text className="text-center text-gray-400 font-medium text-sm">¿Ya tienes cuenta? <Text className="text-zenitBlack font-bold">Inicia sesión</Text></Text>
-          </TouchableOpacity>
-      </View>
+      <View className="bg-white px-6 py-8 pb-12 rounded-t-3xl shadow-sm"><GradientButton text="INICIAR CALIBRACIÓN" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onNext(); }} /><TouchableOpacity className="mt-6"><Text className="text-center text-gray-400 font-medium text-sm">¿Ya tienes cuenta? <Text className="text-zenitBlack font-bold">Inicia sesión</Text></Text></TouchableOpacity></View>
   </View>
 );
 
 const GenderStep = ({ value, onChange }) => {
   const options = ['Masculino', 'Femenino', 'Otro'];
   return (
-    <View className="flex-1 px-6 pt-8">
-      <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Elegí tu género</Text>
-      <Text className="text-gray-500 text-lg mb-12 font-medium">Para calibrar tu metabolismo basal.</Text>
-      <View className="gap-y-4">
-        {options.map((opt) => (
-            <TouchableOpacity key={opt} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(opt); }} activeOpacity={0.9}>
-                {value === opt ? (
-                    <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="py-6 rounded-3xl items-center shadow-lg shadow-orange-500/30">
-                        <Text className="text-xl font-bold text-white">{opt}</Text>
-                    </LinearGradient>
-                ) : (
-                    <View className="py-6 rounded-3xl border-2 items-center bg-white border-gray-100">
-                        <Text className="text-xl font-bold text-zenitBlack">{opt}</Text>
-                    </View>
-                )}
-            </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+    <View className="flex-1 px-6 pt-8"><Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Elegí tu género</Text><Text className="text-gray-500 text-lg mb-12 font-medium">Para calibrar tu metabolismo basal.</Text><View className="gap-y-4">{options.map((opt) => (<TouchableOpacity key={opt} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(opt); }} activeOpacity={0.9}>{value === opt ? (<LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="py-6 rounded-3xl items-center shadow-lg shadow-orange-500/30"><Text className="text-xl font-bold text-white">{opt}</Text></LinearGradient>) : (<View className="py-6 rounded-3xl border-2 items-center bg-white border-gray-100"><Text className="text-xl font-bold text-zenitBlack">{opt}</Text></View>)}</TouchableOpacity>))}</View></View>
   );
 };
 
 const BiometricsStep = ({ weight, setWeight, height, setHeight }) => (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-        <View className="flex-1 pt-4 px-6">
-            <View className="mb-6">
-                 <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tus Medidas</Text>
-                 <Text className="text-gray-500 text-lg font-medium">Toca el número y desliza para ajustar.</Text>
-            </View>
-            <View className="flex-1 justify-center gap-y-6">
-                <GesturePicker label="Altura" value={height} onChange={setHeight} min={100} max={250} step={1} unit="cm" orientation="vertical" />
-                <GesturePicker label="Peso" value={weight} onChange={setWeight} min={30} max={300} step={0.1} unit="kg" orientation="horizontal" />
-            </View>
-        </View>
-    </GestureHandlerRootView>
+    <GestureHandlerRootView style={{ flex: 1 }}><View className="flex-1 pt-4 px-6"><View className="mb-6"><Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tus Medidas</Text><Text className="text-gray-500 text-lg font-medium">Toca el número y desliza para ajustar.</Text></View><View className="flex-1 justify-center gap-y-6"><GesturePicker label="Altura" value={height} onChange={setHeight} min={100} max={250} step={1} unit="cm" orientation="vertical" /><GesturePicker label="Peso" value={weight} onChange={setWeight} min={30} max={300} step={0.1} unit="kg" orientation="horizontal" /></View></View></GestureHandlerRootView>
 );
 
 const AgeStep = ({ value, onChange }) => {
-    const handlePress = (num) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        if (num === 'del') {
-            const newVal = Math.floor(value / 10);
-            onChange(newVal === 0 ? '' : newVal);
-            return;
-        }
-        const numericValue = value === '' ? 0 : value;
-        const newValue = numericValue * 10 + num;
-        if (newValue <= 120) onChange(newValue);
-    };
+    const handlePress = (num) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); if (num === 'del') { const newVal = Math.floor(value / 10); onChange(newVal === 0 ? '' : newVal); return; } const numericValue = value === '' ? 0 : value; const newValue = numericValue * 10 + num; if (newValue <= 120) onChange(newValue); };
     const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'del'];
     return (
-        <View className="flex-1 px-6 pt-4">
-            <View className="mb-4"><Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tu Edad</Text><Text className="text-gray-500 text-lg font-medium">Define tu etapa vital.</Text></View>
-            <View className="items-center justify-center flex-1 max-h-32 mb-8"><Text className={`text-7xl font-bold tracking-tight ${!value ? 'text-gray-300' : 'text-zenitBlack'}`}>{value || '0'}</Text><Text className="text-zenitRed text-sm font-bold tracking-widest uppercase mt-2">AÑOS</Text></View>
-            <View className="flex-row flex-wrap justify-center gap-x-6 gap-y-4 px-2">
-                {keys.map((k, i) => (k === '.' ? <View key={i} className="w-[80px] h-[80px]" /> : <TouchableOpacity key={i} onPress={() => handlePress(k)} className={`w-[80px] h-[80px] rounded-full items-center justify-center ${k === 'del' ? 'bg-transparent' : 'bg-gray-100 active:bg-gray-200'}`}>{k === 'del' ? <Delete size={28} color="#0A0A0A" /> : <Text className="text-3xl font-medium text-zenitBlack">{k}</Text>}</TouchableOpacity>))}
-            </View>
-        </View>
+        <View className="flex-1 px-6 pt-4"><View className="mb-4"><Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tu Edad</Text><Text className="text-gray-500 text-lg font-medium">Define tu etapa vital.</Text></View><View className="items-center justify-center flex-1 max-h-32 mb-8"><Text className={`text-7xl font-bold tracking-tight ${!value ? 'text-gray-300' : 'text-zenitBlack'}`}>{value || '0'}</Text><Text className="text-zenitRed text-sm font-bold tracking-widest uppercase mt-2">AÑOS</Text></View><View className="flex-row flex-wrap justify-center gap-x-6 gap-y-4 px-2">{keys.map((k, i) => (k === '.' ? <View key={i} className="w-[80px] h-[80px]" /> : <TouchableOpacity key={i} onPress={() => handlePress(k)} className={`w-[80px] h-[80px] rounded-full items-center justify-center ${k === 'del' ? 'bg-transparent' : 'bg-gray-100 active:bg-gray-200'}`}>{k === 'del' ? <Delete size={28} color="#0A0A0A" /> : <Text className="text-3xl font-medium text-zenitBlack">{k}</Text>}</TouchableOpacity>))}</View></View>
     );
 };
 
 const ActivityStep = ({ value, onChange }) => {
     const levels = [{ id:1.2, title: 'Sedentario', desc: 'Poco o nada de ejercicio', icon: Move }, { id:1.375, title: 'Ligero', desc: 'Ejercicio ligero 1-3 días/sem', icon: Zap }, { id:1.55, title: 'Moderado', desc: 'Ejercicio moderado 3-5 días/sem', icon: Flame }, { id:1.725, title: 'Intenso', desc: 'Ejercicio intenso 6-7 días/sem', icon: Trophy }];
     return (
-        <View className="flex-1 px-6 pt-4">
-            <View className="mb-6"><Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tu Ritmo</Text><Text className="text-gray-500 text-lg font-medium">¿Cuánto te mueves hoy?</Text></View>
-            <View className="gap-y-4">
-                {levels.map((lvl) => (
-                    <TouchableOpacity key={lvl.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(lvl.id); }} activeOpacity={0.9}>
-                        {value === lvl.id ? (
-                            <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="flex-row items-center p-5 rounded-3xl shadow-lg shadow-orange-500/30">
-                                <View className="w-12 h-12 rounded-full items-center justify-center mr-4 bg-white/20"><lvl.icon size={24} color="#fff" /></View>
-                                <View className="flex-1"><Text className="text-xl font-bold mb-0.5 text-white">{lvl.title}</Text><Text className="text-sm font-medium text-white/80">{lvl.desc}</Text></View>
-                                <View className="w-6 h-6 rounded-full items-center justify-center ml-2 bg-white"><Check size={14} color="#F97316" strokeWidth={4} /></View>
-                            </LinearGradient>
-                        ) : (
-                            <View className="flex-row items-center p-5 rounded-3xl border bg-white border-gray-100 shadow-sm"><View className="w-12 h-12 rounded-full items-center justify-center mr-4 bg-gray-50"><lvl.icon size={24} color="#0A0A0A" /></View><View className="flex-1"><Text className="text-xl font-bold mb-0.5 text-zenitBlack">{lvl.title}</Text><Text className="text-sm font-medium text-gray-400">{lvl.desc}</Text></View></View>
-                        )}
-                    </TouchableOpacity>
-                ))}
-            </View>
-        </View>
+        <View className="flex-1 px-6 pt-4"><View className="mb-6"><Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tu Ritmo</Text><Text className="text-gray-500 text-lg font-medium">¿Cuánto te mueves hoy?</Text></View><View className="gap-y-4">{levels.map((lvl) => (<TouchableOpacity key={lvl.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(lvl.id); }} activeOpacity={0.9}>{value === lvl.id ? (<LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="flex-row items-center p-5 rounded-3xl shadow-lg shadow-orange-500/30"><View className="w-12 h-12 rounded-full items-center justify-center mr-4 bg-white/20"><lvl.icon size={24} color="#fff" /></View><View className="flex-1"><Text className="text-xl font-bold mb-0.5 text-white">{lvl.title}</Text><Text className="text-sm font-medium text-white/80">{lvl.desc}</Text></View><View className="w-6 h-6 rounded-full items-center justify-center ml-2 bg-white"><Check size={14} color="#F97316" strokeWidth={4} /></View></LinearGradient>) : (<View className="flex-row items-center p-5 rounded-3xl border bg-white border-gray-100 shadow-sm"><View className="w-12 h-12 rounded-full items-center justify-center mr-4 bg-gray-50"><lvl.icon size={24} color="#0A0A0A" /></View><View className="flex-1"><Text className="text-xl font-bold mb-0.5 text-zenitBlack">{lvl.title}</Text><Text className="text-sm font-medium text-gray-400">{lvl.desc}</Text></View></View>)}</TouchableOpacity>))}</View></View>
     );
 };
 
 const GoalStep = ({ value, onChange }) => {
     const options = [{ title: 'Perder Grasa', desc: 'Déficit calórico controlado' }, { title: 'Mantenimiento', desc: 'Rendimiento y energía estable' }, { title: 'Ganar Músculo', desc: 'Superávit estratégico' }];
     return (
-        <View className="flex-1 px-6 pt-8">
-            <Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tu Objetivo</Text>
-            <Text className="text-gray-500 text-lg mb-12 font-medium">El algoritmo se ajustará a esto.</Text>
-            <View className="gap-y-4">
-                {options.map((opt) => (
-                    <TouchableOpacity key={opt.title} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(opt.title); }} activeOpacity={0.9}>
-                        {value === opt.title ? (
-                            <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="p-6 rounded-3xl items-start shadow-lg shadow-orange-500/30"><Text className="text-xl font-bold mb-1 text-white">{opt.title}</Text><Text className="text-sm font-medium text-white/80">{opt.desc}</Text></LinearGradient>
-                        ) : (
-                            <View className="p-6 rounded-3xl border-2 items-start bg-white border-gray-100"><Text className="text-xl font-bold mb-1 text-zenitBlack">{opt.title}</Text><Text className="text-sm font-medium text-gray-500">{opt.desc}</Text></View>
-                        )}
-                    </TouchableOpacity>
-                ))}
-            </View>
-        </View>
+        <View className="flex-1 px-6 pt-8"><Text className="text-zenitBlack text-4xl font-black tracking-tight mb-2">Tu Objetivo</Text><Text className="text-gray-500 text-lg mb-12 font-medium">El algoritmo se ajustará a esto.</Text><View className="gap-y-4">{options.map((opt) => (<TouchableOpacity key={opt.title} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(opt.title); }} activeOpacity={0.9}>{value === opt.title ? (<LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="p-6 rounded-3xl items-start shadow-lg shadow-orange-500/30"><Text className="text-xl font-bold mb-1 text-white">{opt.title}</Text><Text className="text-sm font-medium text-white/80">{opt.desc}</Text></LinearGradient>) : (<View className="p-6 rounded-3xl border-2 items-start bg-white border-gray-100"><Text className="text-xl font-bold mb-1 text-zenitBlack">{opt.title}</Text><Text className="text-sm font-medium text-gray-500">{opt.desc}</Text></View>)}</TouchableOpacity>))}</View></View>
     );
 };
 
@@ -444,7 +349,7 @@ const SocialProofStep = ({ onNext }) => (
     </View>
 );
 
-// PASO 11: RESULTADO FINAL (FIX LAYOUT + VALIDACIONES)
+// --- PASO 11: RESULTADO FINAL (ANILLOS CON GRADIENTE) ---
 const FinalResultStep = ({ onFinish, data, calculations, setResults }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [errors, setErrors] = useState({});
@@ -489,23 +394,33 @@ const FinalResultStep = ({ onFinish, data, calculations, setResults }) => {
 
                     {!isEditing ? (
                         <>
-                            <PremiumRing size={200} strokeWidth={14} color={COLORS.blue} percentage={0.85}>
+                            {/* CALORÍAS - ANILLO CON GRADIENTE AZUL */}
+                            <PremiumRing 
+                                size={220} 
+                                strokeWidth={14} 
+                                gradientColors={GRADIENTS.blue} 
+                                percentage={0.85} 
+                                id="cal"
+                            >
                                 <Text numberOfLines={1} adjustsFontSizeToFit className="text-6xl font-black text-zenitBlack tracking-tighter">{calculations.calories}</Text>
                                 <Text className="text-gray-400 text-sm font-bold tracking-[3px]">KCAL</Text>
                             </PremiumRing>
-                            <View className="flex-row justify-between w-full mt-10 mb-8">
-                                <MacroRingItem value={calculations.protein} label="PROT" color={COLORS.orange} />
-                                <MacroRingItem value={calculations.carbs} label="CARB" color={COLORS.yellow} />
-                                <MacroRingItem value={calculations.fats} label="GRASA" color={COLORS.green} />
+
+                            {/* MACROS - ANILLOS CON GRADIENTE */}
+                            <View className="flex-row justify-between w-full mt-10 mb-8 px-2">
+                                <MacroRingItem value={calculations.protein} label="PROT" gradientColors={GRADIENTS.orange} id="prot" />
+                                <MacroRingItem value={calculations.carbs} label="CARB" gradientColors={GRADIENTS.yellow} id="carb" />
+                                <MacroRingItem value={calculations.fats} label="GRASA" gradientColors={GRADIENTS.green} id="fat" />
                             </View>
+
                             <TouchableOpacity onPress={() => setIsEditing(true)}><Text className="text-zenitRed font-bold text-sm uppercase tracking-widest">Personalizar Valores</Text></TouchableOpacity>
                         </>
                     ) : (
                         <View className="w-full gap-y-6">
                             <EditField label={`Calorías (${LIMITS.calories.min}-${LIMITS.calories.max})`} value={editValues.calories} error={errors.calories} onChange={(v) => {setEditValues(p=>({...p, calories:v})); validate('calories',v);}} big />
                             
-                            {/* LAYOUT FIX: gap reducido */}
-                            <View className="flex-row gap-x-2 w-full">
+                            {/* LAYOUT FIX */}
+                            <View className="flex-row gap-x-2 w-full px-1">
                                 <EditField label="Proteína" value={editValues.protein} error={errors.protein} color={COLORS.orange} onChange={(v)=>{setEditValues(p=>({...p, protein:v})); validate('protein',v);}} />
                                 <EditField label="Carbos" value={editValues.carbs} error={errors.carbs} color={COLORS.yellow} onChange={(v)=>{setEditValues(p=>({...p, carbs:v})); validate('carbs',v);}} />
                                 <EditField label="Grasas" value={editValues.fats} error={errors.fats} color={COLORS.green} onChange={(v)=>{setEditValues(p=>({...p, fats:v})); validate('fats',v);}} />
@@ -523,9 +438,9 @@ const FinalResultStep = ({ onFinish, data, calculations, setResults }) => {
 };
 
 // COMPONENTES AUXILIARES
-const MacroRingItem = ({ value, label, color }) => (
+const MacroRingItem = ({ value, label, gradientColors, id }) => (
     <View className="items-center">
-        <PremiumRing size={85} strokeWidth={8} color={color} percentage={0.6}>
+        <PremiumRing size={85} strokeWidth={8} gradientColors={gradientColors} percentage={0.6} id={id}>
             <Text numberOfLines={1} adjustsFontSizeToFit className="text-xl font-black text-zenitBlack">{value}g</Text>
         </PremiumRing>
         <Text className="text-gray-400 text-[10px] font-black tracking-widest mt-3">{label}</Text>
