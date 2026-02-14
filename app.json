@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "Zenit-Front",
+    "name": "Zenit",
     "slug": "Zenit-Front",
     "version": "1.0.0",
+    "scheme": "zenit",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -23,7 +24,10 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+    ]
   }
 }
