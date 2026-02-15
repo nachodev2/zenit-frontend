@@ -108,7 +108,7 @@ export default function OnboardingScreen({ navigation }) {
 
     const renderContent = () => {
         switch(step) {
-            case 0: return <HeroStep onNext={advanceStep} />;
+            case 0: return <HeroStep onNext={advanceStep} onLogin={() => navigation.replace('Main')} />;
             case 1: return <SelectionStep 
                         title="Elegí tu género" subtitle="Para calibrar tu metabolismo basal."
                         value={formData.gender} onChange={(val) => setFormData({...formData, gender: val})}
