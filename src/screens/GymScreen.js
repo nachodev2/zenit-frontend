@@ -20,7 +20,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 
-import HumanBody, { MUSCLE_COLORS } from '../components/bodyHuman';
+import HumanBody, { MUSCLE_COLORS } from '../components/BodyHuman';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PANEL_HEIGHT = SCREEN_HEIGHT * 0.65;
