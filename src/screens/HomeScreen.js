@@ -69,7 +69,7 @@ export default function HomeScreen() {
         fats: { remaining: fatRemaining, pct: getReversePercentage(fatRemaining, targetMacros.fats), status: getStatus(fatRemaining, 'macros', isCurrentDay) },
     };
 
-    const overallDayStatus = (!isCurrentDay && pastData) ? getStatus(calRemaining, 'calories', false) : null;
+    const overallDayStatus = (!isCurrentDay) ? (pastData ? getStatus(calRemaining, 'calories', false) : 'unlogged') : null;
 
     // --- LÓGICA DE RACHA (STREAK) ---
     const calculateStreak = () => {

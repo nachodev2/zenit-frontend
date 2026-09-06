@@ -20,13 +20,18 @@ export const PremiumRing = ({ size = 100, strokeWidth = 8, gradientColors, perce
         });
     }, [percentage]);
 
-    const animatedProps = useAnimatedProps(() => ({
-        strokeDashoffset: circumference * (1 - progress.value),
-    }));
+    const animatedProps = useAnimatedProps(() => {
+        // 1. Candado matemático: Forzamos a que el rebote físico nunca pase de 0 a nivel cálculo.
+        const clampedProgress = Math.max(0, Math.min(1, progress.value));
+        
+        return {
+            strokeDashoffset: circumference * (1 - clampedProgress),
+            // 2. MAGIA ANTI-PARPADEO: Si la barra está vacía (o rebotando en 0), la volvemos invisible
+            // para que el strokeLinecap="round" no dibuje el infame "puntito fantasma".
+            strokeOpacity: clampedProgress <= 0.001 ? 0 : 1,
+        };
+    });
 
-    // TRUCO VITAL: Incorporamos el color hexadecimal al ID del SVG.
-    // Esto fuerza a React Native a repintar el gradiente inmediatamente 
-    // cuando cambias a estado de "éxito" (verde) o "peligro" (rojo).
     const gradientId = `grad_${id}_${gradientColors[0].replace('#', '')}`;
 
     return (
@@ -39,9 +44,7 @@ export const PremiumRing = ({ size = 100, strokeWidth = 8, gradientColors, perce
                     </SvgLinearGradient>
                 </Defs>
                 <G origin={`${center}, ${center}`} rotation="-90">
-                    {/* Pista de fondo gris */}
                     <Circle cx={center} cy={center} r={radius} stroke="#F3F4F6" strokeWidth={strokeWidth} fill="transparent" />
-                    {/* Barra de progreso animada */}
                     <AnimatedCircle
                         stroke={`url(#${gradientId})`} cx={center} cy={center} r={radius} 
                         strokeWidth={strokeWidth} fill="transparent"
