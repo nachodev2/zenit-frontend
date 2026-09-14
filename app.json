@@ -5,29 +5,41 @@
     "version": "1.0.0",
     "scheme": "zenit",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zenit.zenitai",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Permitir a Zenit usar el reconocimiento de voz.",
+        "NSMicrophoneUsageDescription": "Permitir a Zenit usar el micrófono para mensajes de voz."
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.zenit.zenitai",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
-      "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro"
     },
     "plugins": [
-    ]
+      "expo-dev-client",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permitir a Zenit usar el micrófono para mensajes de voz.",
+          "speechRecognitionPermission": "Permitir a Zenit usar el reconocimiento de voz."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c77f0631-d4a1-4729-9a9a-88e196cdc411"
+      }
+    },
+    "owner": "nachodev2"
   }
 }

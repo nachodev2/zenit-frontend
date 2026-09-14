@@ -1,51 +1,762 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ScrollView, Dimensions, TextInput, KeyboardAvoidingView, Platform, useColorScheme, PanResponder } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { Zap, ZapOff, RotateCcw, X, Camera as CameraIcon, ChevronLeft, Sparkles, Check } from 'lucide-react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated';
+import { Zap, ZapOff, RotateCcw, X, ChevronLeft, Sparkles, Check, Plus, Heart, Send, Mic, Trash2, Lock, Play, Pause, ChevronDown, ChevronUp, FileText } from 'lucide-react-native';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideInRight, SlideOutRight, FadeInUp, useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing, useAnimatedReaction, runOnJS, withSequence, withDelay, LinearTransition } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
+import * as SpeechRecognition from 'expo-speech-recognition';
 
 import { ZENIT_GRADIENT } from '../constants/theme'; 
-import { analyzeFoodImage } from '../services/ai/geminiVisionService';
+import { analyzeFoodImage, chatWithCoach, generateInitialCoachWidgets } from '../services/ai/geminiVisionService';
 
-export default function ScanScreen() {
-  const navigation = useNavigation();
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// ==========================================
+// SOMBRAS COMO ESTILO INLINE (Bypass NativeWind)
+// ==========================================
+const sendButtonShadow = {
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+};
+
+const userBubbleShadow = {
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+};
+
+// ==========================================
+// INDICADOR DE ESCRIBIENDO (Estilo WhatsApp/iMessage)
+// ==========================================
+const TypingIndicator = React.memo(({ isDark }) => {
+    const dot1 = useSharedValue(0);
+    const dot2 = useSharedValue(0);
+    const dot3 = useSharedValue(0);
+
+    useEffect(() => {
+        const animateDot = (dot, delay) => {
+            dot.value = withDelay(delay, withRepeat(
+                withSequence(
+                    withTiming(-5, { duration: 300, easing: Easing.inOut(Easing.ease) }),
+                    withTiming(0, { duration: 300, easing: Easing.inOut(Easing.ease) })
+                ), -1, true
+            ));
+        };
+        animateDot(dot1, 0);
+        animateDot(dot2, 150);
+        animateDot(dot3, 300);
+    }, []);
+
+    const s1 = useAnimatedStyle(() => ({ transform: [{ translateY: dot1.value }] }));
+    const s2 = useAnimatedStyle(() => ({ transform: [{ translateY: dot2.value }] }));
+    const s3 = useAnimatedStyle(() => ({ transform: [{ translateY: dot3.value }] }));
+
+    const dotColor = isDark ? '#9CA3AF' : '#6B7280';
+
+    return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 40, height: 24, gap: 4 }}>
+            <Animated.View style={[{ width: 6, height: 6, borderRadius: 3, backgroundColor: dotColor }, s1]} />
+            <Animated.View style={[{ width: 6, height: 6, borderRadius: 3, backgroundColor: dotColor }, s2]} />
+            <Animated.View style={[{ width: 6, height: 6, borderRadius: 3, backgroundColor: dotColor }, s3]} />
+        </View>
+    );
+});
+
+// ==========================================
+// COMPONENTE BURBUJA DE AUDIO
+// ==========================================
+const AudioBubble = React.memo(({ uri, text, isDark }) => {
+    const [sound, setSound] = useState(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [durationMillis, setDurationMillis] = useState(1);
+    const [positionMillis, setPositionMillis] = useState(0);
+    const [showTranscript, setShowTranscript] = useState(false);
+
+    useEffect(() => {
+        return sound ? () => { sound.unloadAsync(); } : undefined;
+    }, [sound]);
+
+    const handlePlayPause = async () => {
+        if (sound) {
+            if (isPlaying) {
+                await sound.pauseAsync();
+                setIsPlaying(false);
+            } else {
+                if (positionMillis >= durationMillis - 100) {
+                    await sound.setPositionAsync(0);
+                }
+                await sound.playAsync();
+                setIsPlaying(true);
+            }
+        } else {
+            const { sound: newSound } = await Audio.Sound.createAsync(
+                { uri },
+                { shouldPlay: true, isLooping: false },
+                (status) => {
+                    if (status.isLoaded) {
+                        setDurationMillis(status.durationMillis || 1);
+                        setPositionMillis(status.positionMillis);
+                        
+                        if (status.didJustFinish) {
+                            setIsPlaying(false);
+                            newSound.setPositionAsync(0);
+                            newSound.pauseAsync();
+                        }
+                    }
+                }
+            );
+            setSound(newSound);
+            setIsPlaying(true);
+        }
+    };
+
+    const formatTime = (millis) => {
+        const totalSeconds = Math.floor(millis / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    };
+
+    const progress = Math.min(100, Math.max(0, (positionMillis / durationMillis) * 100));
+    const s = getChatStyles(isDark);
+
+    return (
+        <LinearGradient
+            colors={ZENIT_GRADIENT}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[s.bubbleUser, userBubbleShadow, { paddingVertical: 12, paddingHorizontal: 16, minWidth: 175 }]}
+        >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity onPress={handlePlayPause} style={{ marginRight: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                    {isPlaying ? <Pause size={14} color="white" /> : <Play size={14} color="white" style={{ marginLeft: 2 }} />}
+                </TouchableOpacity>
+                
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, position: 'relative' }}>
+                        <View style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${progress}%`, backgroundColor: 'white', borderRadius: 2 }} />
+                        <View style={{ position: 'absolute', top: -3, left: `${progress}%`, width: 10, height: 10, borderRadius: 5, backgroundColor: 'white', marginLeft: -5 }} />
+                    </View>
+                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600', minWidth: 32 }}>
+                        {formatTime(positionMillis)}
+                    </Text>
+                </View>
+            </View>
+
+            {text && text !== "🎤 Mensaje de voz" ? (
+                <View style={{ marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)', paddingTop: 6 }}>
+                    <TouchableOpacity 
+                        onPress={() => {
+                            Haptics.selectionAsync();
+                            setShowTranscript(prev => !prev);
+                        }}
+                        activeOpacity={0.75}
+                        style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 12, gap: 4 }}
+                    >
+                        <FileText size={11} color="white" />
+                        <Text style={{ color: 'white', fontSize: 11, fontWeight: '700' }}>
+                            {showTranscript ? "Ocultar" : "Transcribir"}
+                        </Text>
+                        {showTranscript ? <ChevronUp size={12} color="white" /> : <ChevronDown size={12} color="white" />}
+                    </TouchableOpacity>
+
+                    {showTranscript && (
+                        <Text style={{ color: 'white', fontSize: 13, marginTop: 6, opacity: 0.95, lineHeight: 18 }}>
+                            {text}
+                        </Text>
+                    )}
+                </View>
+            ) : null}
+        </LinearGradient>
+    );
+});
+
+// ==========================================
+// COMPONENTES DE ANIMACIÓN (PROCESAMIENTO)
+// ==========================================
+const SlowPulseIcon = React.memo(() => {
+    const scale = useSharedValue(1);
+    const opacity = useSharedValue(0.5);
+
+    useEffect(() => {
+        scale.value = withRepeat(withTiming(1.15, { duration: 1400, easing: Easing.inOut(Easing.cubic) }), -1, true);
+        opacity.value = withRepeat(withTiming(0.15, { duration: 1400, easing: Easing.inOut(Easing.cubic) }), -1, true);
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        opacity: opacity.value,
+    }));
+
+    return (
+        <View className="items-center justify-center">
+            <Animated.View style={[animatedStyle, { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: '#F97316' }]} />
+            <LinearGradient 
+                colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} 
+                style={{ width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}
+            >
+                <Sparkles size={28} color="white" />
+            </LinearGradient>
+        </View>
+    );
+});
+
+const ProgressText = React.memo(({ progress }) => {
+    const [loadingText, setLoadingText] = useState('Analizando imagen...');
+
+    useAnimatedReaction(() => progress.value, (current, previous) => {
+        if (current >= 95 && previous < 95) runOnJS(setLoadingText)('¡Completado!');
+        else if (current >= 65 && previous < 65) runOnJS(setLoadingText)('Calculando macros...');
+        else if (current >= 25 && previous < 25) runOnJS(setLoadingText)('Identificando ingredientes...');
+    });
+
+    return (
+        <Animated.View entering={FadeIn.duration(300)} className="items-center">
+            <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-wide text-center">{loadingText}</Text>
+            <Text className="text-[#F97316] text-[10px] mt-1.5 uppercase tracking-widest font-black text-center">Zenit AI</Text>
+        </Animated.View>
+    );
+});
+
+// ==========================================
+// CHAT AISLADO: MICRÓFONO CON "SWIPE TO LOCK"
+// ==========================================
+const CoachChatOverlay = ({ isDark, editableData, onClose, userData }) => {
+    const inputRef = useRef(null);
+    const textRef = useRef(''); 
+    const chatScrollRef = useRef(null);
+    
+    const [hasText, setHasText] = useState(false); 
+    const [isTyping, setIsTyping] = useState(true); 
+    const [coachMessages, setCoachMessages] = useState([]); 
+
+    // --- ESTADOS PARA AUDIO Y GESTOS ---
+    const [isRecording, setIsRecording] = useState(false);
+    const [isLocked, setIsLockedState] = useState(false);
+    
+    const isLockedRef = useRef(false);
+    const isPreparingRef = useRef(false); 
+    const pressStartTimeRef = useRef(0);
+    const sttTranscriptRef = useRef('');
+    const audioUriRef = useRef(null);
+    
+    const recordingScale = useSharedValue(1); 
+    const panY = useSharedValue(0); 
+
+    const setLocked = (val) => {
+        isLockedRef.current = val;
+        setIsLockedState(val);
+    };
+
+    // --- HOOKS DE SPEECH TO TEXT (STT NATIVO) ---
+    SpeechRecognition.useSpeechRecognitionEvent('result', (event) => {
+        const text = event.results[0]?.transcript || '';
+        sttTranscriptRef.current = text;
+    });
+
+    SpeechRecognition.useSpeechRecognitionEvent('audiostart', (event) => {
+        if (event?.uri) {
+            audioUriRef.current = event.uri;
+        }
+    });
+
+    SpeechRecognition.useSpeechRecognitionEvent('audioend', (event) => {
+        if (event?.uri) {
+            audioUriRef.current = event.uri;
+        }
+    });
+
+    SpeechRecognition.useSpeechRecognitionEvent('error', (event) => {
+        if (isRecording) {
+            setIsRecording(false);
+            recordingScale.value = withTiming(1, { duration: 150 });
+        }
+    });
+
+    // ... (useEffect remains unchanged)
+    useEffect(() => {
+        const fetchInitialAnalysis = async () => {
+            try {
+                const aiData = await generateInitialCoachWidgets(editableData, userData);
+                const initialWidgets = [
+                    { id: 'sys-1', role: 'assistant', type: 'widget', title: 'Valor Nutricional', score: aiData.nutritionalScore, description: aiData.nutritionalDesc },
+                    { id: 'sys-2', role: 'assistant', type: 'widget', title: 'Impacto en tu Dieta', score: aiData.impactScore, description: aiData.impactDesc },
+                    { id: 'sys-3', role: 'assistant', type: 'text', text: aiData.welcomeMessage }
+                ];
+                setCoachMessages(initialWidgets);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+                setCoachMessages([{ id: 'sys-error', role: 'assistant', type: 'text', text: 'Tuvimos un problema analizando esto. ¿Qué duda tenés sobre el alimento?' }]);
+            } finally {
+                setIsTyping(false);
+            }
+        };
+        fetchInitialAnalysis();
+    }, []);
+
+    const handleTextChange = (text) => {
+        textRef.current = text;
+        const isNotEmpty = text.trim().length > 0;
+        if (isNotEmpty && !hasText) setHasText(true);
+        if (!isNotEmpty && hasText) setHasText(false);
+    };
+
+    const handleSendChatMessage = async (textToSend = null) => {
+        const text = textToSend || textRef.current.trim();
+        if (!text) return;
+        
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setCoachMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', type: 'text', text }]);
+        
+        inputRef.current?.clear();
+        textRef.current = '';
+        setHasText(false);
+        setIsTyping(true);
+
+        try {
+            const history = coachMessages.filter(m => m.type === 'text');
+            const aiResponse = await chatWithCoach(editableData, text, history, userData);
+            setCoachMessages(prev => [...prev, { id: Date.now().toString() + 'ai', role: 'assistant', type: 'text', text: aiResponse }]);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error) {
+            Alert.alert("Error", "Zenit Coach está descansando. Intentá de nuevo.");
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
+    // ==========================================
+    // LÓGICA DE GRABACIÓN (STT NATIVO + AUDIO PERSISTENTE)
+    // ==========================================
+    const startRecording = async () => {
+        if (isPreparingRef.current) return;
+        isPreparingRef.current = true;
+
+        try {
+            // 1. Pedir permisos al STT nativo
+            const sttPerm = await SpeechRecognition.ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            if (!sttPerm.granted) {
+                isPreparingRef.current = false;
+                return Alert.alert("Permiso denegado", "Activá el micrófono en Ajustes para usar notas de voz.");
+            }
+
+            if (!isPreparingRef.current) return;
+
+            sttTranscriptRef.current = '';
+            audioUriRef.current = null;
+
+            // 2. Arrancar STT nativo con persistencia de audio (sin bloquear el micrófono con Audio.Recording)
+            SpeechRecognition.ExpoSpeechRecognitionModule.start({
+                lang: 'es-AR',
+                interimResults: true,
+                requiresOnDeviceRecognition: false,
+                recordingOptions: {
+                    persist: true,
+                },
+            });
+
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setIsRecording(true);
+            recordingScale.value = withRepeat(withTiming(1.08, { duration: 600, easing: Easing.inOut(Easing.ease) }), -1, true);
+        } catch (err) {
+            console.error("Error al iniciar STT:", err);
+            setIsRecording(false);
+            recordingScale.value = withTiming(1, { duration: 150 });
+        } finally {
+            isPreparingRef.current = false;
+        }
+    };
+
+    const stopRecording = async (shouldSend = true) => {
+        if (isPreparingRef.current) isPreparingRef.current = false;
+
+        setLocked(false);
+        setIsRecording(false);
+        recordingScale.value = withTiming(1, { duration: 150 });
+        panY.value = withTiming(0, { duration: 150 });
+
+        try {
+            // Detener STT
+            SpeechRecognition.ExpoSpeechRecognitionModule.stop();
+
+            if (shouldSend) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+                // Esperamos un instante a que el motor nativo emita el último chunk de texto
+                await new Promise(resolve => setTimeout(resolve, 400));
+
+                const finalTranscript = sttTranscriptRef.current.trim();
+                const uri = audioUriRef.current;
+
+                if (finalTranscript || uri) {
+                    const userText = finalTranscript || "🎤 Mensaje de voz";
+
+                    // Agregamos el mensaje a la interfaz
+                    setCoachMessages(prev => [...prev, {
+                        id: Date.now().toString(),
+                        role: 'user',
+                        type: uri ? 'audio' : 'text',
+                        text: userText,
+                        audioUri: uri
+                    }]);
+
+                    if (finalTranscript) {
+                        // Enviar el texto transcrito a Gemini
+                        setIsTyping(true);
+                        try {
+                            const history = coachMessages.filter(m => m.type === 'text');
+                            const aiResponse = await chatWithCoach(editableData, finalTranscript, history, userData);
+                            setCoachMessages(prev => [...prev, { id: Date.now().toString() + 'ai', role: 'assistant', type: 'text', text: aiResponse }]);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (error) {
+                            console.error("Error en chatWithCoach:", error);
+                            Alert.alert("Error", "No pudimos procesar tu mensaje con el coach. Intentá de nuevo.");
+                        } finally {
+                            setIsTyping(false);
+                        }
+                    } else {
+                        Alert.alert("Aviso", "No se detectó texto claro en el audio. Intentá hablar más cerca del micrófono.");
+                    }
+                } else {
+                    Alert.alert("Aviso", "No se detectó audio ni voz.");
+                }
+            } else {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                SpeechRecognition.ExpoSpeechRecognitionModule.abort();
+            }
+        } catch (err) {
+            console.error("Error al detener:", err);
+        }
+    };
+
+    // ==========================================
+    // DETECTOR DE GESTOS (SWIPE TO LOCK)
+    // ==========================================
+    const micPanResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onPanResponderGrant: () => {
+                if (!isLockedRef.current) {
+                    pressStartTimeRef.current = Date.now();
+                    startRecording();
+                    panY.value = 0;
+                }
+            },
+            onPanResponderMove: (_, gestureState) => {
+                if (!isLockedRef.current) {
+                    // Solo permitimos mover hacia arriba (valores negativos en Y)
+                    if (gestureState.dy < 0 && gestureState.dy > -100) {
+                        panY.value = gestureState.dy;
+                    }
+                    // Si pasa los 40 píxeles hacia arriba, ¡BLOQUEAMOS!
+                    if (gestureState.dy < -40) {
+                        setLocked(true);
+                        panY.value = withTiming(0); // El botón vuelve a su lugar visualmente
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                    }
+                }
+            },
+            onPanResponderRelease: () => {
+                panY.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
+                // Si el usuario soltó y NO había llegado a bloquear
+                if (!isLockedRef.current) {
+                    const duration = Date.now() - pressStartTimeRef.current;
+                    if (duration < 300) {
+                        // Fue un toque rápido: Cancelamos
+                        stopRecording(false);
+                    } else {
+                        // Mantuvo presionado: Enviamos
+                        stopRecording(true); 
+                    }
+                }
+            },
+            onPanResponderTerminate: () => {
+                panY.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
+                if (!isLockedRef.current) stopRecording(false);
+            }
+        })
+    ).current;
+
+    const animatedMicStyle = useAnimatedStyle(() => ({
+        transform: [
+            { scale: recordingScale.value },
+            { translateY: panY.value }
+        ]
+    }));
+
+    const s = getChatStyles(isDark);
+
+    return (
+        <Animated.View 
+            entering={SlideInRight.duration(260).easing(Easing.out(Easing.cubic))} 
+            exiting={SlideOutRight.duration(220).easing(Easing.in(Easing.cubic))} 
+            style={s.overlay}
+            renderToHardwareTextureAndroid={true}
+        >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <SafeAreaView style={{ flex: 1 }}>
+                    
+                    {/* Header */}
+                    <View style={s.header}>
+                        <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); }} style={s.iconBtn}>
+                            <ChevronLeft size={24} color={isDark ? "white" : "#111827"} />
+                        </TouchableOpacity>
+                        <View style={s.headerTitle}>
+                            <Sparkles size={18} color="#F97316" />
+                            <Text style={s.headerText}>Zenit Coach</Text>
+                        </View>
+                        <View style={{ width: 40, height: 40 }} />
+                    </View>
+
+                    {/* Mensajes */}
+                    <ScrollView 
+                        ref={chatScrollRef} 
+                        onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })} 
+                        style={s.scroll} 
+                        contentContainerStyle={{ paddingBottom: 20 }} 
+                        showsVerticalScrollIndicator={false} 
+                        keyboardShouldPersistTaps="handled"
+                        scrollEventThrottle={16}
+                        removeClippedSubviews={Platform.OS === 'android'}
+                        overScrollMode="never"
+                        keyboardDismissMode="on-drag"
+                    >
+                        {/* ... MAPEO DE MENSAJES EXACTAMENTE IGUAL ... */}
+                        {coachMessages.map((msg, index) => {
+                            const isAssistant = msg.role === 'assistant';
+                            const showAvatar = isAssistant && (index === 0 || coachMessages[index - 1].role !== 'assistant');
+
+                            return (
+                                <Animated.View key={msg.id} entering={FadeIn.duration(220)} layout={LinearTransition.duration(180)} style={isAssistant ? s.messageRowAsst : s.messageRowUser}>
+                                    {isAssistant ? (
+                                        <>
+                                            {showAvatar ? (
+                                                <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatar}>
+                                                    <Sparkles size={14} color="white" />
+                                                </LinearGradient>
+                                            ) : <View style={s.avatarSpacer} />}
+                                            {msg.type === 'widget' ? (
+                                                <View style={[s.bubbleAsst, { width: '85%' }]}>
+                                                    <Text style={s.widgetTitle}>{msg.title}</Text>
+                                                    <View style={s.widgetBars}>
+                                                        {[1, 2, 3, 4, 5].map((i) => <View key={i} style={i <= msg.score ? s.widgetBarActive : s.widgetBarInactive} />)}
+                                                    </View>
+                                                    <Text style={s.widgetDesc}>{msg.description}</Text>
+                                                </View>
+                                            ) : (
+                                                <View style={s.bubbleAsst}><Text style={s.bubbleTextAsst}>{msg.text}</Text></View>
+                                            )}
+                                        </>
+                                    ) : (
+                                        msg.type === 'audio' 
+                                            ? <AudioBubble uri={msg.audioUri} text={msg.text} isDark={isDark} />
+                                            : (
+                                                <LinearGradient
+                                                    colors={ZENIT_GRADIENT}
+                                                    start={{ x: 0, y: 0 }}
+                                                    end={{ x: 1, y: 0 }}
+                                                    style={[s.bubbleUser, userBubbleShadow]}
+                                                >
+                                                    <Text style={s.bubbleTextUser}>{msg.text}</Text>
+                                                </LinearGradient>
+                                            )
+                                    )}
+                                </Animated.View>
+                            );
+                        })}
+
+                        {isTyping && (
+                            <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(150)} layout={LinearTransition.duration(180)} style={s.messageRowAsst}>
+                                <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatar}>
+                                    <Sparkles size={14} color="white" />
+                                </LinearGradient>
+                                <View style={[s.bubbleAsst, { paddingHorizontal: 12, paddingVertical: 10 }]}>
+                                    <TypingIndicator isDark={isDark} />
+                                </View>
+                            </Animated.View>
+                        )}
+                    </ScrollView>
+
+                    {/* Input y Micrófono */}
+                    <View style={s.inputContainer}>
+                        
+                        {/* Indicador superior al estar grabando sin bloquear */}
+                        {isRecording && !isLocked && (
+                            <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(200)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, mb: 12, paddingBottom: 12 }}>
+                                <Lock size={14} color="#9CA3AF" />
+                                <Text style={{ color: '#9CA3AF', fontSize: 13, fontWeight: '600' }}>
+                                    Deslizá hacia arriba para bloquear
+                                </Text>
+                            </Animated.View>
+                        )}
+
+                        <View style={s.inputInner}>
+                            
+                            {isRecording && isLocked ? (
+                                // ESTADO: GRABACIÓN BLOQUEADA
+                                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 4 }}>
+                                    <TouchableOpacity onPress={() => stopRecording(false)} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                                        <Trash2 size={20} color="#EF4444" />
+                                    </TouchableOpacity>
+                                    <Animated.Text entering={FadeIn} style={{ color: '#EF4444', fontWeight: 'bold' }}>
+                                        Grabando... (Bloqueado)
+                                    </Animated.Text>
+                                    <View style={{ width: 40 }} />
+                                </View>
+                            ) : (
+                                // ESTADO: NORMAL (Texto)
+                                <TextInput
+                                    ref={inputRef}
+                                    onChangeText={handleTextChange}
+                                    onSubmitEditing={() => handleSendChatMessage()}
+                                    placeholder={isRecording ? "Grabando audio..." : "Preguntale al coach..."}
+                                    placeholderTextColor="#9CA3AF"
+                                    editable={!isRecording}
+                                    style={s.textInput}
+                                    selectionColor="#F97316"
+                                    returnKeyType="send"
+                                />
+                            )}
+                            
+                            {hasText || (isRecording && isLocked) ? (
+                                // BOTÓN DE ENVIAR (Aparece si hay texto o si el audio está bloqueado)
+                                <TouchableOpacity 
+                                    onPress={() => {
+                                        if (isRecording && isLocked) {
+                                            stopRecording(true);
+                                        } else {
+                                            handleSendChatMessage();
+                                        }
+                                    }} 
+                                    style={{ marginLeft: 8 }}
+                                >
+                                    <LinearGradient
+                                        colors={ZENIT_GRADIENT}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={[s.sendBtn, sendButtonShadow]}
+                                    >
+                                        <Send size={18} color="white" style={{ marginLeft: -2, marginTop: 2 }} />
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            ) : (
+                                // BOTÓN DE MICRÓFONO CON GESTOS Y ANIMACIÓN
+                                <Animated.View 
+                                    {...micPanResponder.panHandlers}
+                                    style={animatedMicStyle}
+                                >
+                                    {/* Pasamos pointerEvents="none" para que el View animado atrape el gesto, no el botón */}
+                                    <View pointerEvents="none" style={[s.micBtn, isRecording && { backgroundColor: '#FEE2E2' }]}>
+                                        <Mic size={18} color={isRecording ? "#EF4444" : (isDark ? "#9CA3AF" : "#4B5563")} />
+                                    </View>
+                                </Animated.View>
+                            )}
+                        </View>
+                    </View>
+                </SafeAreaView>
+            </KeyboardAvoidingView>
+        </Animated.View>
+    );
+};
+
+// ==========================================
+// ESTILOS ESTÁTICOS (Zero Allocations en Renders)
+// ==========================================
+const createChatStyles = (isDark) => StyleSheet.create({
+    overlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, backgroundColor: isDark ? '#0A0A0A' : '#ffffff' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 16, paddingTop: 8, borderBottomWidth: 1, borderBottomColor: isDark ? '#111111' : '#F3F4F6' },
+    headerTitle: { flexDirection: 'row', alignItems: 'center' },
+    headerText: { color: isDark ? 'white' : '#111827', fontWeight: 'bold', fontSize: 18, marginLeft: 8 },
+    iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#111111' : '#F9FAFB', borderRadius: 20, borderWidth: 1, borderColor: isDark ? '#1F2937' : '#E5E7EB' },
+    scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 24 },
+    messageRowAsst: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 16 },
+    messageRowUser: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', marginBottom: 16 },
+    avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(249, 115, 22, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 4, marginRight: 8, borderWidth: 1, borderColor: 'rgba(249, 115, 22, 0.3)' },
+    avatarSpacer: { width: 32, marginRight: 8 },
+    bubbleAsst: { backgroundColor: isDark ? '#111111' : '#F9FAFB', padding: 16, borderRadius: 24, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: isDark ? '#1F2937' : '#F3F4F6', maxWidth: '85%' },
+    bubbleUser: { backgroundColor: '#F97316', padding: 16, borderRadius: 24, borderBottomRightRadius: 4, maxWidth: '85%' },
+    bubbleTextAsst: { color: isDark ? '#E5E7EB' : '#1F2937', fontSize: 16, lineHeight: 24 },
+    bubbleTextUser: { color: 'white', fontSize: 16, lineHeight: 24 },
+    widgetTitle: { color: isDark ? '#E5E7EB' : '#111827', fontSize: 16, fontWeight: '700', marginBottom: 12 },
+    widgetDesc: { color: isDark ? '#9CA3AF' : '#4B5563', fontSize: 13, lineHeight: 20 },
+    widgetBars: { flexDirection: 'row', gap: 4, marginBottom: 12 },
+    widgetBarActive: { flex: 1, height: 6, backgroundColor: '#F97316', borderRadius: 3 },
+    widgetBarInactive: { flex: 1, height: 6, backgroundColor: isDark ? '#1F2937' : '#E5E7EB', borderRadius: 3 },
+    inputContainer: { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: isDark ? '#111111' : '#F3F4F6', backgroundColor: isDark ? '#0A0A0A' : '#ffffff' },
+    inputInner: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#111111' : '#F9FAFB', borderWidth: 1, borderColor: isDark ? '#1F2937' : '#E5E7EB', borderRadius: 999, paddingLeft: 20, paddingRight: 6, paddingVertical: 6 },
+    textInput: { flex: 1, color: isDark ? 'white' : '#111827', fontSize: 16, paddingVertical: 12, margin: 0 },
+    sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    micBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#1F2937' : '#E5E7EB', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+});
+
+const chatStylesDark = createChatStyles(true);
+const chatStylesLight = createChatStyles(false);
+const getChatStyles = (isDark) => (isDark ? chatStylesDark : chatStylesLight);
+
+// ==========================================
+// PANTALLA PRINCIPAL
+// ==========================================
+export default function ScanScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
+  
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
-  // Estados: 'idle' | 'processing' | 'result'
   const [appState, setAppState] = useState('idle'); 
   const [photo, setPhoto] = useState(null);
   const [facing, setFacing] = useState('back');
   const [flash, setFlash] = useState('off');
-  const [aiData, setAiData] = useState(null);
+  const [editableData, setEditableData] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showCoachChat, setShowCoachChat] = useState(false);
+
+  const progress = useSharedValue(0);
+  const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value}%` }));
 
   const handleTakePicture = async () => {
     if (!cameraRef.current || appState !== 'idle') return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setAppState('processing');
+    setAppState('capturing'); 
 
     try {
-      const photoData = await cameraRef.current.takePictureAsync({
-        quality: 0.5, 
-        base64: true,
-        skipProcessing: true, 
-      });
+      const photoData = await cameraRef.current.takePictureAsync({ quality: 0.5, base64: true, skipProcessing: true });
       setPhoto(photoData);
 
-      // Llamada real a Gemini
+      setAppState('processing');
+      progress.value = 0;
+      progress.value = withTiming(90, { duration: 5000, easing: Easing.out(Easing.ease) });
+
       const result = await analyzeFoodImage(photoData.base64);
-      setAiData(result);
       
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setAppState('result');
+      if (!result.isFood) {
+          progress.value = 0;
+          setAppState('idle');
+          setPhoto(null);
+          Alert.alert("Objeto no reconocido", "Parece que no hay comida en la foto. Zenit solo analiza alimentos.");
+          return;
+      }
+
+      setEditableData(result);
+      
+      progress.value = withTiming(100, { duration: 350 });
+      setTimeout(() => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setAppState('result');
+      }, 400);
+
     } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "No pudimos analizar la imagen.");
+      console.error("Error oculto:", error);
+      Alert.alert("Error Detectado", String(error.message || error));
       setAppState('idle');
       setPhoto(null);
     }
@@ -54,56 +765,72 @@ export default function ScanScreen() {
   const handleRetake = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setPhoto(null);
-    setAiData(null);
+    setEditableData(null);
+    setIsFavorite(false);
+    setShowCoachChat(false);
+    progress.value = 0;
     setAppState('idle');
   };
 
   const handleSave = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    navigation.goBack();
+    if (navigation?.goBack) navigation.goBack();
   };
 
-  if (!permission) return <View className="flex-1 bg-black" />;
-  if (!permission.granted) {
-    return (
-      <View className="flex-1 bg-black items-center justify-center p-6">
-        <View className="bg-gray-900 p-6 rounded-3xl items-center shadow-lg shadow-orange-900/20">
-            <CameraIcon size={60} color="#F97316" />
-            <Text className="text-white text-xl font-bold mt-4 mb-2">Habilitar Cámara</Text>
-            <TouchableOpacity onPress={requestPermission} className="bg-[#F97316] w-full py-4 rounded-xl mt-4">
-              <Text className="text-white font-bold text-center text-lg">Permitir Acceso</Text>
-            </TouchableOpacity>
-        </View>
-      </View>
-    );
+  // Manejo de estado de carga inicial de permisos
+  if (!permission) {
+      return <View className="flex-1 bg-black" />;
   }
+
+  // Si no hay permiso, le mostramos un botón amigable para pedirlo
+  if (!permission.granted) {
+      return (
+          <View className="flex-1 bg-black items-center justify-center px-8">
+              <View className="w-20 h-20 bg-[#F97316]/20 rounded-full items-center justify-center mb-6">
+                  <Sparkles size={32} color="#F97316" />
+              </View>
+              <Text className="text-white text-2xl font-bold text-center mb-3 tracking-tight">
+                  Activá tu cámara
+              </Text>
+              <Text className="text-gray-400 text-center mb-10 text-base leading-6">
+                  Zenit necesita acceso a tu cámara para poder escanear tus comidas y calcular los macros automáticamente.
+              </Text>
+              <TouchableOpacity 
+                  onPress={requestPermission}
+                  activeOpacity={0.8}
+              >
+                  <LinearGradient 
+                      colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} 
+                      style={{ paddingVertical: 16, paddingHorizontal: 40, borderRadius: 999, shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}
+                  >
+                      <Text className="text-white font-bold text-lg text-center">
+                          Otorgar Permiso
+                      </Text>
+                  </LinearGradient>
+              </TouchableOpacity>
+          </View>
+      );
+  } 
 
   return (
     <View className="flex-1 bg-black">
-      
-      {/* CAPA 1: CÁMARA */}
       <CameraView style={StyleSheet.absoluteFill} facing={facing} flash={flash} mode="picture" ref={cameraRef} />
 
-      {/* OVERLAY: CONTROLES DE LA CÁMARA */}
       {appState === 'idle' && (
         <SafeAreaView className="flex-1 justify-between">
             <View className="flex-row justify-between items-center px-6 pt-2">
-                <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center">
+                <TouchableOpacity onPress={() => navigation?.goBack && navigation.goBack()} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center">
                     <ChevronLeft size={24} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setFlash(f => f === 'off' ? 'on' : 'off'); }} className={`w-10 h-10 rounded-full items-center justify-center ${flash === 'on' ? 'bg-[#F97316]' : 'bg-black/40'}`}>
-                    {flash === 'on' ? <Zap size={18} color="white" fill="white" /> : <ZapOff size={18} color="white" />}
+                    {flash === 'on' ? <Zap size={18} color="white" /> : <ZapOff size={18} color="white" />}
                 </TouchableOpacity>
             </View>
 
             <View className="flex-row justify-around items-center pb-8 pt-4">
                 <View className="w-12 h-12" />
                 <TouchableOpacity onPress={handleTakePicture} activeOpacity={0.7}>
-                    <LinearGradient
-                        colors={ZENIT_GRADIENT}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={{ width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' }}
-                    >
+                    <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' }}>
                         <View className="w-[64px] h-[64px] rounded-full bg-white border-4 border-white/30" />
                     </LinearGradient>
                 </TouchableOpacity>
@@ -114,83 +841,157 @@ export default function ScanScreen() {
         </SafeAreaView>
       )}
 
-      {/* CAPA 2: PROCESANDO (ESTILO CAL+) */}
       {appState === 'processing' && photo && (
-        <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut} className="absolute inset-0 bg-black/70 items-center justify-center z-40">
-            <View className="bg-[#111111] p-8 rounded-[32px] items-center border border-gray-800 shadow-2xl">
-                <ActivityIndicator size="large" color="#F97316" />
-                <Text className="text-white font-semibold text-lg mt-5">Procesando imagen...</Text>
-                <Text className="text-gray-500 text-xs mt-2 uppercase tracking-widest font-bold">Zenit AI</Text>
+        <Animated.View 
+            entering={FadeIn.duration(260)} 
+            exiting={FadeOut.duration(200)} 
+            style={StyleSheet.absoluteFill} 
+            className="z-40 items-center justify-center"
+            renderToHardwareTextureAndroid={true}
+        >
+            <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <View className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+            <View className="bg-white/95 dark:bg-[#111111]/95 rounded-[40px] p-8 w-[80%] max-w-[320px] items-center justify-center border border-white/20 shadow-[0_20px_40px_rgba(0,0,0,0.2)]">
+                <SlowPulseIcon />
+                <View className="h-14 justify-center mt-6">
+                    <ProgressText progress={progress} />
+                </View>
+                <View className="w-full h-1.5 bg-gray-200 dark:bg-black rounded-full mt-6 overflow-hidden">
+                    <Animated.View style={[progressStyle, { height: '100%', backgroundColor: '#F97316', borderRadius: 999 }]} />
+                </View>
             </View>
         </Animated.View>
       )}
 
-      {/* CAPA 3: PANTALLA DE RESULTADOS (ESTILO CAL+) */}
-      {appState === 'result' && aiData && photo && (
-          <Animated.View entering={SlideInDown.duration(500).springify().damping(20)} className="absolute inset-0 bg-[#0A0A0A] z-50">
-             <ScrollView className="flex-1" bounces={false}>
-                
-                {/* Header Foto */}
-                <View className="h-80 w-full relative">
-                    <Image source={{ uri: photo.uri }} className="w-full h-full" resizeMode="cover" />
-                    <LinearGradient colors={['transparent', '#0A0A0A']} className="absolute bottom-0 w-full h-32" />
-                    
-                    <SafeAreaView className="absolute w-full px-4 pt-2">
-                        <TouchableOpacity onPress={handleRetake} className="bg-black/50 w-10 h-10 rounded-full items-center justify-center backdrop-blur-md">
-                            <X color="white" size={24} />
+      {appState === 'result' && editableData && photo && (
+          <Animated.View 
+              entering={SlideInDown.duration(360).easing(Easing.out(Easing.cubic))} 
+              style={StyleSheet.absoluteFill} 
+              className="z-50"
+              renderToHardwareTextureAndroid={true}
+          >
+             <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+             <LinearGradient colors={['transparent', isDark ? 'rgba(10,10,10,0.8)' : 'rgba(0,0,0,0.8)', isDark ? '#0A0A0A' : '#000000']} className="absolute inset-0" pointerEvents="none" />
+
+             {!showCoachChat && (
+                 <SafeAreaView className="absolute top-0 w-full px-4 pt-2 z-50" pointerEvents="box-none">
+                     <TouchableOpacity onPress={handleRetake} className="bg-white/20 w-10 h-10 rounded-full items-center justify-center backdrop-blur-md border border-white/30">
+                         <X color="white" size={24} />
+                     </TouchableOpacity>
+                 </SafeAreaView>
+             )}
+
+             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                 <ScrollView 
+                     className="flex-1" 
+                     contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} 
+                     showsVerticalScrollIndicator={false} 
+                     bounces={true} 
+                     keyboardShouldPersistTaps="handled"
+                     scrollEventThrottle={16}
+                     removeClippedSubviews={Platform.OS === 'android'}
+                     overScrollMode="never"
+                     keyboardDismissMode="on-drag"
+                 >
+                    <View style={{ height: SCREEN_HEIGHT * 0.55 }} />
+                    <View className="bg-white dark:bg-[#0A0A0A] rounded-t-[40px] pt-4 px-6 pb-40 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+                        <View className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full self-center mb-6" />
+
+                        <View className="flex-row justify-between items-start mt-2">
+                            <TextInput value={editableData.mealName} onChangeText={(t) => setEditableData({...editableData, mealName: t})} className="text-gray-900 dark:text-white text-4xl font-black tracking-tight p-0 m-0 flex-1" multiline selectionColor="#F97316" />
+                            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setIsFavorite(!isFavorite); }} className="ml-4 bg-gray-100 dark:bg-[#111111] w-12 h-12 rounded-full items-center justify-center border border-gray-200 dark:border-gray-800 shadow-sm">
+                                <Heart size={22} color={isFavorite ? "#F97316" : "#9CA3AF"} fill={isFavorite ? "#F97316" : "transparent"} />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, marginTop: 12, marginBottom: 32 }}>
+                            <Sparkles size={16} color="white" />
+                            <TextInput value={String(editableData.totalCalories)} onChangeText={(t) => setEditableData({...editableData, totalCalories: t.replace(/[^0-9]/g, '')})} keyboardType="numeric" className="text-white font-black text-xl ml-2 p-0 m-0 min-w-[30px] text-center" selectionColor="white" />
+                            <Text className="text-white font-black text-lg ml-1">KCAL</Text>
+                        </LinearGradient>
+
+                        <View className="flex-row justify-between mb-8 gap-x-3">
+                            <MacroCard label="Proteína" value={editableData.totalProtein} onChangeText={(t) => setEditableData({...editableData, totalProtein: t})} />
+                            <MacroCard label="Carbos" value={editableData.totalCarbs} onChangeText={(t) => setEditableData({...editableData, totalCarbs: t})} />
+                            <MacroCard label="Grasas" value={editableData.totalFat} onChangeText={(t) => setEditableData({...editableData, totalFat: t})} />
+                        </View>
+
+                        <TouchableOpacity activeOpacity={0.8} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCoachChat(true); }} className="flex-row items-center justify-center py-4 rounded-2xl mb-10 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#111111]">
+                            <Sparkles size={20} color="#F97316" />
+                            <Text className="text-gray-900 dark:text-white font-bold text-base ml-2 tracking-wide">Consultar Zenit Coach</Text>
                         </TouchableOpacity>
-                    </SafeAreaView>
-                </View>
-                
-                {/* Contenido Nutricional */}
-                <View className="px-6 -mt-10">
-                    <Text className="text-white text-3xl font-black tracking-tight">{aiData.mealName}</Text>
-                    
-                    <View className="flex-row items-center bg-[#F97316]/10 self-start px-4 py-1.5 rounded-full mt-3 mb-8 border border-[#F97316]/20">
-                        <Sparkles size={16} color="#F97316" fill="#F97316" />
-                        <Text className="text-[#F97316] font-black text-lg ml-2">{aiData.totalCalories} KCAL</Text>
-                    </View>
 
-                    {/* Fila de Macros */}
-                    <View className="flex-row justify-between mb-8 gap-x-3">
-                        <MacroCard label="Proteína" value={aiData.totalProtein} unit="g" />
-                        <MacroCard label="Carbos" value={aiData.totalCarbs} unit="g" />
-                        <MacroCard label="Grasas" value={aiData.totalFat} unit="g" />
-                    </View>
+                        <View className="flex-row justify-between items-center mb-4">
+                            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Ingredientes</Text>
+                            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setEditableData({...editableData, ingredients: [...editableData.ingredients, ""]}); }}>
+                                <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
+                                    <Plus size={14} color="white" />
+                                    <Text className="text-white font-bold text-xs ml-1">Agregar</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
 
-                    {/* Ingredientes */}
-                    <Text className="text-white font-bold text-xl mb-4 tracking-tight">Ingredientes detectados</Text>
-                    <View className="bg-[#111111] rounded-3xl p-5 border border-gray-800 mb-10">
-                        {aiData.ingredients.map((ing, i) => (
-                            <View key={i} className={`py-3 flex-row items-center ${i !== aiData.ingredients.length - 1 ? 'border-b border-gray-800' : ''}`}>
-                                <View className="w-2 h-2 rounded-full bg-[#F97316] mr-4" />
-                                <Text className="text-gray-300 text-base font-medium capitalize">{ing}</Text>
-                            </View>
-                        ))}
+                        <View className="bg-gray-50 dark:bg-[#111111] rounded-3xl p-2 border border-gray-100 dark:border-gray-800 mb-4">
+                            {editableData.ingredients.map((ing, i) => (
+                                <View key={i} className={`py-1 px-4 flex-row items-center justify-between ${i !== editableData.ingredients.length - 1 ? 'border-b border-gray-200 dark:border-gray-800/50' : ''}`}>
+                                    <View className="flex-row items-center flex-1">
+                                        <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: 8, height: 8, borderRadius: 4, marginRight: 12 }} />
+                                        <TextInput value={ing} onChangeText={(t) => { const newIng = [...editableData.ingredients]; newIng[i] = t; setEditableData({...editableData, ingredients: newIng}); }} placeholder="Nombre..." placeholderTextColor="#9CA3AF" className="text-gray-800 dark:text-gray-200 text-base font-medium flex-1 py-3 p-0 m-0 capitalize" selectionColor="#F97316" />
+                                    </View>
+                                    <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); const newIng = [...editableData.ingredients]; newIng.splice(i, 1); setEditableData({...editableData, ingredients: newIng}); }} className="p-2">
+                                        <X size={18} color="#9CA3AF" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
                     </View>
-                </View>
-             </ScrollView>
+                    <View className="w-full h-40 bg-white dark:bg-[#0A0A0A] mt-[-2px]" />
+                 </ScrollView>
+             </KeyboardAvoidingView>
 
-             {/* Footer con Botón Guardar */}
-             <SafeAreaView className="bg-[#0A0A0A] px-6 py-4 border-t border-gray-900">
-                <TouchableOpacity onPress={handleSave} className="bg-[#F97316] w-full py-4 rounded-2xl flex-row justify-center items-center">
-                    <Check size={20} color="white" strokeWidth={3} />
-                    <Text className="text-white font-bold text-lg ml-2">Guardar comida</Text>
-                </TouchableOpacity>
-             </SafeAreaView>
+             {showCoachChat && (
+                 <CoachChatOverlay 
+                    isDark={isDark} 
+                    editableData={editableData} 
+                    onClose={() => setShowCoachChat(false)} 
+                    // ACÁ SE PASAN TUS DATOS DEL ONBOARDING (A FUTURO CONTEXTO GLOBAL):
+                    userData={{
+                        name: "Nacho",
+                        goal: "Ganar masa muscular (Volumen limpio)",
+                        macros: {
+                            calories: 2522,
+                            protein: 141,
+                            carbs: 393,
+                            fats: 43
+                        }
+                    }}
+                 />
+             )}
+
+             {!showCoachChat && (
+                 <View className="absolute bottom-8 right-6 z-50 pointer-events-box-none">
+                     <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
+                         <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 }}>
+                             <Check size={32} color="white" />
+                         </LinearGradient>
+                     </TouchableOpacity>
+                 </View>
+             )}
           </Animated.View>
       )}
     </View>
   );
 }
 
-// Subcomponente UI de Macros
-const MacroCard = ({ label, value, unit }) => (
-    <View className="flex-1 bg-[#111111] p-4 rounded-2xl border border-gray-800 items-center">
-        <Text className="text-gray-400 text-[11px] font-bold tracking-widest uppercase mb-1">{label}</Text>
+// ==========================================
+// SUBCOMPONENTE: MACROCARD (MEMOIZADO 60FPS)
+// ==========================================
+const MacroCard = React.memo(({ label, value, onChangeText }) => (
+    <View className="flex-1 bg-gray-50 dark:bg-[#111111] py-5 px-2 rounded-3xl border border-gray-100 dark:border-gray-800 items-center">
+        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-black tracking-widest uppercase mb-1">{label}</Text>
         <View className="flex-row items-baseline">
-            <Text className="text-white text-xl font-black">{value}</Text>
-            <Text className="text-gray-500 font-bold text-xs ml-1">{unit}</Text>
+            <TextInput value={String(value)} onChangeText={(t) => onChangeText(t.replace(/[^0-9.]/g, ''))} keyboardType="numeric" className="text-gray-900 dark:text-white text-2xl font-black p-0 m-0 min-w-[24px] text-center" selectionColor="#F97316" />
+            <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs ml-1">g</Text>
         </View>
     </View>
-);
+));
