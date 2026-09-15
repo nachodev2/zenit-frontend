@@ -55,30 +55,111 @@ ESTRUCTURA JSON OBLIGATORIA:
 }
 `;
 
-const retryAsync = async (fn, retries = 3, delay = 1500) => {
+const safeParseJson = (rawText) => {
+  if (!rawText) throw new Error("Respuesta vacía de la IA.");
+  const trimmed = String(rawText).trim();
+
+  // 1. Intento directo
+  try {
+    return JSON.parse(trimmed);
+  } catch (e) {}
+
+  // 2. Limpieza de bloques markdown ```json ... ```
+  const cleanedMarkdown = trimmed.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+  try {
+    return JSON.parse(cleanedMarkdown);
+  } catch (e) {}
+
+  // 3. Extraer substring entre el primer '{' y el último '}' (ignora 'Claro,...' u otros preámbulos)
+  const firstBrace = cleanedMarkdown.indexOf('{');
+  const lastBrace = cleanedMarkdown.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const jsonSubstring = cleanedMarkdown.substring(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(jsonSubstring);
+    } catch (e) {}
+  }
+
+  throw new Error(`JSON_PARSE_FAILED: No se pudo extraer JSON válido. Contenido: ${trimmed.slice(0, 100)}`);
+};
+
+const isRetryableError = (error) => {
+  if (!error) return false;
+  if (error.name === 'SyntaxError') return true;
+  const status = error.status || error.statusCode;
+  if (status === 503 || status === 429 || status === 500 || status === 504) return true;
+  const msg = String(error.message || '').toLowerCase();
+  return (
+    msg.includes('json_parse_failed') ||
+    msg.includes('json parse error') ||
+    msg.includes('unexpected character') ||
+    msg.includes('503') ||
+    msg.includes('429') ||
+    msg.includes('500') ||
+    msg.includes('504') ||
+    msg.includes('overloaded') ||
+    msg.includes('unavailable') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('resource has been exhausted') ||
+    msg.includes('quota') ||
+    msg.includes('rate limit') ||
+    msg.includes('fetch failed') ||
+    msg.includes('network') ||
+    msg.includes('timeout') ||
+    msg.includes('deadline_exceeded')
+  );
+};
+
+const retryAsync = async (fn, retries = 3, delay = 1000) => {
   try {
     return await fn();
   } catch (error) {
-    if (retries > 0 && (error.message?.includes('503') || error.message?.includes('overloaded'))) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return retryAsync(fn, retries - 1, delay * 1.5);
+    if (retries > 0 && isRetryableError(error)) {
+      const jitter = Math.floor(Math.random() * 250) + 100;
+      await new Promise(resolve => setTimeout(resolve, delay + jitter));
+      return retryAsync(fn, retries - 1, Math.round(delay * 1.5));
     }
     throw error;
   }
 };
 
+let cachedVisionModel = null;
+const getVisionModel = () => {
+  if (!cachedVisionModel) {
+    cachedVisionModel = genAI.getGenerativeModel({ 
+        model: 'gemini-3.5-flash-lite', 
+        systemInstruction: SYSTEM_PROMPT,
+        generationConfig: { 
+          responseMimeType: "application/json", 
+          temperature: 0.1,
+        }
+    });
+  }
+  return cachedVisionModel;
+};
+
+// Pre-calentamiento (Pre-warm) silencioso en segundo plano:
+// Resuelve DNS, negocia TLS y mantiene caliente el socket HTTP keep-alive para que el primer escaneo sea instantáneo
+let isPrewarmed = false;
+export const prewarmVisionService = () => {
+  if (isPrewarmed) return;
+  isPrewarmed = true;
+  try {
+    getVisionModel();
+    fetch('https://generativelanguage.googleapis.com', { method: 'HEAD' }).catch(() => {});
+  } catch (e) {}
+};
+
 export const analyzeFoodImage = async (base64Image) => {
   return retryAsync(async () => {
-    const model = genAI.getGenerativeModel({ 
-        model: 'gemini-3.5-flash-lite', 
-        generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
-    });
-
+    const model = getVisionModel();
     const imagePart = { inlineData: { data: base64Image, mimeType: 'image/jpeg' } };
-    const result = await model.generateContent([SYSTEM_PROMPT, imagePart]);
-    const cleanedText = result.response.text().replace(/```json\n?|```/g, '').trim();
-    return FoodAnalysisResultSchema.parse(JSON.parse(cleanedText));
-  });
+    const prompt = 'Analizá este alimento y devolvé el JSON nutricional estricto.';
+    const result = await model.generateContent([prompt, imagePart]);
+    const rawText = result.response.text();
+    const parsed = safeParseJson(rawText);
+    return FoodAnalysisResultSchema.parse(parsed);
+  }, 3, 1000);
 };
 
 export const generateInitialCoachWidgets = async (foodData, userData) => {
@@ -114,8 +195,8 @@ export const generateInitialCoachWidgets = async (foodData, userData) => {
         `;
 
         const result = await model.generateContent(prompt);
-        const text = result.response.text().replace(/```json\n?|```/g, '').trim();
-        return JSON.parse(text);
+        const rawText = result.response.text();
+        return safeParseJson(rawText);
     });
 };
 

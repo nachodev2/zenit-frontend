@@ -2,9 +2,17 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const getTodayDateString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const useUserStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       // 1. Estados
       isOnboarded: false,
       name: 'Nacho',
@@ -15,6 +23,12 @@ export const useUserStore = create(
       meals: [], // Lista de comidas registradas hoy
       avoidedCalories: 0, // Kcal ahorradas por decisiones conscientes
       avoidedCount: 0, // Cantidad de tentaciones evitadas
+
+      // Cuota de escaneos diarios con IA (Límite: 8 fotos/día)
+      dailyScans: {
+        date: '',
+        count: 0
+      },
       
       // 2. Historial de días pasados
       // Formato: { "2026-09-03": { status: "success", macros: {...} } }
@@ -83,7 +97,31 @@ export const useUserStore = create(
         }
       })),
       
-      // 7. Resetear la cuenta (Logout / Debug)
+      // 7. Acciones para cuota diaria de escaneos (8 al día)
+      getRemainingScans: (maxScans = 8) => {
+        const today = getTodayDateString();
+        const daily = get().dailyScans;
+        if (!daily || daily.date !== today) {
+          return maxScans;
+        }
+        return Math.max(0, maxScans - (Number(daily.count) || 0));
+      },
+
+      incrementDailyScans: () => {
+        const today = getTodayDateString();
+        set((state) => {
+          const isSameDay = state.dailyScans?.date === today;
+          const currentCount = isSameDay ? (Number(state.dailyScans?.count) || 0) : 0;
+          return {
+            dailyScans: {
+              date: today,
+              count: currentCount + 1,
+            }
+          };
+        });
+      },
+
+      // 8. Resetear la cuenta (Logout / Debug)
       resetStore: () => set({ 
         isOnboarded: false, 
         createdAt: null,
@@ -91,6 +129,7 @@ export const useUserStore = create(
         meals: [],
         avoidedCalories: 0,
         avoidedCount: 0,
+        dailyScans: { date: '', count: 0 },
         history: {}
       })
     }),
