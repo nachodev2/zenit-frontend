@@ -12,6 +12,13 @@ export const FoodAnalysisResultSchema = z.object({
   totalCarbs: z.number(),
   totalFat: z.number(),
   ingredients: z.array(z.string()),
+  servingType: z.enum(['unit_or_dish', 'container_or_bulk']).catch('unit_or_dish'),
+  containerDescription: z.string().optional().catch(''),
+  defaultServingLabel: z.string().optional().catch(''),
+  portionPresets: z.array(z.object({
+    label: z.string(),
+    multiplier: z.number(),
+  })).optional().catch([]),
 });
 
 const SYSTEM_PROMPT = `
@@ -24,8 +31,11 @@ REGLAS CRÍTICAS PARA MAXIMIZAR LA PRECISIÓN:
 2. RECONOCIMIENTO COMERCIAL (PRIORIDAD ABSOLUTA): Si la imagen muestra un producto empaquetado, una marca reconocible o un producto ultraprocesado famoso (ej. Alfajor Havanna, Oreo, Coca-Cola, barra de proteína), NO inventes promedios genéricos. BUSCÁ en tu base de conocimientos los valores nutricionales oficiales de la etiqueta de esa marca y variante específica, y devolvé esos números exactos.
 3. DENSIDAD Y REGIONALISMO (ARGENTINA): Si ves panadería, pastelería o repostería de Sudamérica (alfajores, facturas, empanadas, tartas), asumí una MUY ALTA densidad calórica. Contemplá el peso del dulce de leche repostero y la "grasa invisible" (manteca, grasa de pella, margarina en las masas).
 4. COMIDA CASERA Y GRASAS OCULTAS: Si es comida casera o de restaurante, asumí el uso de aceites de cocción. Añadí siempre un margen de grasas (y por ende calorías) que suelen estar ocultas en salsas, salteados o frituras.
-5. TAMAÑO DE PORCIÓN: Si es comida casera, calcula los macros ESTRICTAMENTE para la CANTIDAD EXACTA visible en la imagen (ej. 1 porción vs una pizza entera). 
+5. TAMAÑO DE PORCIÓN: Si es comida casera servida, calcula los macros ESTRICTAMENTE para la CANTIDAD EXACTA visible en la imagen.
 6. IDIOMA: El "mealName" y todos los items en el array "ingredients" DEBEN estar en Español (Argentina).
+7. CLASIFICACIÓN DE ENVASE vs PLATO SERVIDO (FRACCIONAMIENTO INTELIGENTE):
+   - 'unit_or_dish': Platos servidos, frutas individuales (naranja, manzana, banana), una taza de café, o comida para consumir en el momento. En este caso "portionPresets" debe contener: [{"label": "Todo (100%)", "multiplier": 1.0}, {"label": "3/4 (75%)", "multiplier": 0.75}, {"label": "Mitad (50%)", "multiplier": 0.5}, {"label": "1/4 (25%)", "multiplier": 0.25}].
+   - 'container_or_bulk': Envases multiporción, potes (ej. pote de dulce de leche de 400g, tarro de helado de 1kg, paquete de galletitas, bolsa de frutos secos). En este caso, calcula "totalCalories", "totalProtein", etc. para TODO EL ENVASE VISIBLE. Proporciona "containerDescription" (ej. "Pote de 400g"), "defaultServingLabel" (ej. "1 Cucharada (~25g)") y "portionPresets" con multiplicadores reales respecto al total (ej. [{"label": "1 Cuch. (~25g)", "multiplier": 0.0625}, {"label": "2 Cuch. (~50g)", "multiplier": 0.125}, {"label": "1/4 Envase", "multiplier": 0.25}, {"label": "Envase Entero", "multiplier": 1.0}]).
 
 ESTRUCTURA JSON OBLIGATORIA:
 {
@@ -35,7 +45,13 @@ ESTRUCTURA JSON OBLIGATORIA:
   "totalProtein": Number,
   "totalCarbs": Number,
   "totalFat": Number,
-  "ingredients": ["String", "String"]
+  "ingredients": ["String", "String"],
+  "servingType": "unit_or_dish" | "container_or_bulk",
+  "containerDescription": "String",
+  "defaultServingLabel": "String",
+  "portionPresets": [
+    { "label": "String", "multiplier": Number }
+  ]
 }
 `;
 

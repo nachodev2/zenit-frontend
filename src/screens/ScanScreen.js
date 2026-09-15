@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ScrollView, Dimensions, TextInput, KeyboardAvoidingView, Platform, useColorScheme, PanResponder } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ScrollView, Dimensions, TextInput, KeyboardAvoidingView, Platform, useColorScheme, PanResponder, BackHandler } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Zap, ZapOff, RotateCcw, X, ChevronLeft, Sparkles, Check, Plus, Heart, Send, Mic, Trash2, Lock, Play, Pause, ChevronDown, ChevronUp, FileText } from 'lucide-react-native';
+import { Zap, ZapOff, RotateCcw, X, ChevronLeft, Sparkles, Check, Plus, Heart, Send, Mic, Trash2, Lock, Play, Pause, ChevronDown, ChevronUp, FileText, Trophy, ShieldCheck } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideInRight, SlideOutRight, FadeInUp, useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing, useAnimatedReaction, runOnJS, withSequence, withDelay, LinearTransition } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
@@ -11,6 +11,7 @@ import * as SpeechRecognition from 'expo-speech-recognition';
 
 import { ZENIT_GRADIENT } from '../constants/theme'; 
 import { analyzeFoodImage, chatWithCoach, generateInitialCoachWidgets } from '../services/ai/geminiVisionService';
+import { useUserStore } from '../store/useUserStore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -32,6 +33,64 @@ const userBubbleShadow = {
     shadowRadius: 4,
     elevation: 2,
 };
+
+const coachBtnShadow = {
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+};
+
+const avoidBtnShadow = {
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+};
+
+const portionBoxShadow = {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+};
+
+// ==========================================
+// ESTILOS ESTÁTICOS (Zero Allocations en Renders)
+// ==========================================
+const createChatStyles = (isDark) => StyleSheet.create({
+    overlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, backgroundColor: isDark ? '#0A0A0A' : '#ffffff' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 16, paddingTop: 8, borderBottomWidth: 1, borderBottomColor: isDark ? '#111111' : '#F3F4F6' },
+    headerTitle: { flexDirection: 'row', alignItems: 'center' },
+    headerText: { color: isDark ? 'white' : '#111827', fontWeight: 'bold', fontSize: 18, marginLeft: 8 },
+    iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#111111' : '#F9FAFB', borderRadius: 20, borderWidth: 1, borderColor: isDark ? '#1F2937' : '#E5E7EB' },
+    scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 24 },
+    messageRowAsst: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 16 },
+    messageRowUser: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', marginBottom: 16 },
+    avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(249, 115, 22, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 4, marginRight: 8, borderWidth: 1, borderColor: 'rgba(249, 115, 22, 0.3)' },
+    avatarSpacer: { width: 32, marginRight: 8 },
+    bubbleAsst: { backgroundColor: isDark ? '#111111' : '#F9FAFB', padding: 16, borderRadius: 24, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: isDark ? '#1F2937' : '#F3F4F6', maxWidth: '85%' },
+    bubbleUser: { backgroundColor: '#F97316', padding: 16, borderRadius: 24, borderBottomRightRadius: 4, maxWidth: '85%' },
+    bubbleTextAsst: { color: isDark ? '#E5E7EB' : '#1F2937', fontSize: 16, lineHeight: 24 },
+    bubbleTextUser: { color: 'white', fontSize: 16, lineHeight: 24 },
+    widgetTitle: { color: isDark ? '#E5E7EB' : '#111827', fontSize: 16, fontWeight: '700', marginBottom: 12 },
+    widgetDesc: { color: isDark ? '#9CA3AF' : '#4B5563', fontSize: 13, lineHeight: 20 },
+    widgetBars: { flexDirection: 'row', gap: 4, marginBottom: 12 },
+    widgetBarActive: { flex: 1, height: 6, backgroundColor: '#F97316', borderRadius: 3 },
+    widgetBarInactive: { flex: 1, height: 6, backgroundColor: isDark ? '#1F2937' : '#E5E7EB', borderRadius: 3 },
+    inputContainer: { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: isDark ? '#111111' : '#F3F4F6', backgroundColor: isDark ? '#0A0A0A' : '#ffffff' },
+    inputInner: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#111111' : '#F9FAFB', borderWidth: 1, borderColor: isDark ? '#1F2937' : '#E5E7EB', borderRadius: 999, paddingLeft: 20, paddingRight: 6, paddingVertical: 6 },
+    textInput: { flex: 1, color: isDark ? 'white' : '#111827', fontSize: 16, paddingVertical: 12, margin: 0 },
+    sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    micBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#1F2937' : '#E5E7EB', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+});
+
+const chatStylesDark = createChatStyles(true);
+const chatStylesLight = createChatStyles(false);
+const getChatStyles = (isDark) => (isDark ? chatStylesDark : chatStylesLight);
 
 // ==========================================
 // INDICADOR DE ESCRIBIENDO (Estilo WhatsApp/iMessage)
@@ -220,7 +279,7 @@ const ProgressText = React.memo(({ progress }) => {
 
     return (
         <Animated.View entering={FadeIn.duration(300)} className="items-center">
-            <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-wide text-center">{loadingText}</Text>
+            <Text className="text-gray-900 font-bold text-lg tracking-wide text-center">{loadingText}</Text>
             <Text className="text-[#F97316] text-[10px] mt-1.5 uppercase tracking-widest font-black text-center">Zenit AI</Text>
         </Animated.View>
     );
@@ -229,7 +288,7 @@ const ProgressText = React.memo(({ progress }) => {
 // ==========================================
 // CHAT AISLADO: MICRÓFONO CON "SWIPE TO LOCK"
 // ==========================================
-const CoachChatOverlay = ({ isDark, editableData, onClose, userData }) => {
+const CoachChatOverlay = ({ isDark, editableData, onClose, userData, onAvoidFood }) => {
     const inputRef = useRef(null);
     const textRef = useRef(''); 
     const chatScrollRef = useRef(null);
@@ -516,6 +575,31 @@ const CoachChatOverlay = ({ isDark, editableData, onClose, userData }) => {
                         <View style={{ width: 40, height: 40 }} />
                     </View>
 
+                    {/* Acción rápida de victoria: Decidí no comerlo */}
+                    {onAvoidFood && (
+                        <View style={{ paddingHorizontal: 16, paddingBottom: 10, alignItems: 'center' }}>
+                            <TouchableOpacity
+                                onPress={onAvoidFood}
+                                activeOpacity={0.8}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                                    borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)',
+                                    borderWidth: 1,
+                                    paddingVertical: 7,
+                                    paddingHorizontal: 16,
+                                    borderRadius: 999,
+                                }}
+                            >
+                                <Trophy size={14} color="#10B981" />
+                                <Text style={{ color: isDark ? '#34D399' : '#059669', fontWeight: 'bold', fontSize: 13, marginLeft: 6 }}>
+                                    Decidí no comerlo · Ahorrar calorías
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     {/* Mensajes */}
                     <ScrollView 
                         ref={chatScrollRef} 
@@ -667,39 +751,7 @@ const CoachChatOverlay = ({ isDark, editableData, onClose, userData }) => {
     );
 };
 
-// ==========================================
-// ESTILOS ESTÁTICOS (Zero Allocations en Renders)
-// ==========================================
-const createChatStyles = (isDark) => StyleSheet.create({
-    overlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, backgroundColor: isDark ? '#0A0A0A' : '#ffffff' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 16, paddingTop: 8, borderBottomWidth: 1, borderBottomColor: isDark ? '#111111' : '#F3F4F6' },
-    headerTitle: { flexDirection: 'row', alignItems: 'center' },
-    headerText: { color: isDark ? 'white' : '#111827', fontWeight: 'bold', fontSize: 18, marginLeft: 8 },
-    iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#111111' : '#F9FAFB', borderRadius: 20, borderWidth: 1, borderColor: isDark ? '#1F2937' : '#E5E7EB' },
-    scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 24 },
-    messageRowAsst: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 16 },
-    messageRowUser: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', marginBottom: 16 },
-    avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(249, 115, 22, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 4, marginRight: 8, borderWidth: 1, borderColor: 'rgba(249, 115, 22, 0.3)' },
-    avatarSpacer: { width: 32, marginRight: 8 },
-    bubbleAsst: { backgroundColor: isDark ? '#111111' : '#F9FAFB', padding: 16, borderRadius: 24, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: isDark ? '#1F2937' : '#F3F4F6', maxWidth: '85%' },
-    bubbleUser: { backgroundColor: '#F97316', padding: 16, borderRadius: 24, borderBottomRightRadius: 4, maxWidth: '85%' },
-    bubbleTextAsst: { color: isDark ? '#E5E7EB' : '#1F2937', fontSize: 16, lineHeight: 24 },
-    bubbleTextUser: { color: 'white', fontSize: 16, lineHeight: 24 },
-    widgetTitle: { color: isDark ? '#E5E7EB' : '#111827', fontSize: 16, fontWeight: '700', marginBottom: 12 },
-    widgetDesc: { color: isDark ? '#9CA3AF' : '#4B5563', fontSize: 13, lineHeight: 20 },
-    widgetBars: { flexDirection: 'row', gap: 4, marginBottom: 12 },
-    widgetBarActive: { flex: 1, height: 6, backgroundColor: '#F97316', borderRadius: 3 },
-    widgetBarInactive: { flex: 1, height: 6, backgroundColor: isDark ? '#1F2937' : '#E5E7EB', borderRadius: 3 },
-    inputContainer: { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: isDark ? '#111111' : '#F3F4F6', backgroundColor: isDark ? '#0A0A0A' : '#ffffff' },
-    inputInner: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#111111' : '#F9FAFB', borderWidth: 1, borderColor: isDark ? '#1F2937' : '#E5E7EB', borderRadius: 999, paddingLeft: 20, paddingRight: 6, paddingVertical: 6 },
-    textInput: { flex: 1, color: isDark ? 'white' : '#111827', fontSize: 16, paddingVertical: 12, margin: 0 },
-    sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    micBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#1F2937' : '#E5E7EB', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-});
 
-const chatStylesDark = createChatStyles(true);
-const chatStylesLight = createChatStyles(false);
-const getChatStyles = (isDark) => (isDark ? chatStylesDark : chatStylesLight);
 
 // ==========================================
 // PANTALLA PRINCIPAL
@@ -709,7 +761,8 @@ export default function ScanScreen({ navigation }) {
   const cameraRef = useRef(null);
   
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  // Tema claro (blanco) por defecto según configuración
+  const isDark = false;
 
   const [appState, setAppState] = useState('idle'); 
   const [photo, setPhoto] = useState(null);
@@ -718,21 +771,163 @@ export default function ScanScreen({ navigation }) {
   const [editableData, setEditableData] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showCoachChat, setShowCoachChat] = useState(false);
+  const [selectedPortionLabel, setSelectedPortionLabel] = useState(null);
+  const baseDataRef = useRef(null);
+
+  // Datos globales del usuario y macros
+  const addConsumedFood = useUserStore((state) => state.addConsumedFood);
+  const recordAvoidedFood = useUserStore((state) => state.recordAvoidedFood);
+  const targetMacros = useUserStore((state) => state.targetMacros);
+  const consumedMacros = useUserStore((state) => state.consumedMacros);
+  const userName = useUserStore((state) => state.name);
+  const userGoal = useUserStore((state) => state.goal);
+
+  const appStateRef = useRef(appState);
+  useEffect(() => {
+    appStateRef.current = appState;
+  }, [appState]);
+
+  const isLeavingRef = useRef(false);
 
   const progress = useSharedValue(0);
   const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value}%` }));
+
+  // Función para resetear por completo el estado del escáner
+  const resetScanState = () => {
+    setPhoto(null);
+    setEditableData(null);
+    setSelectedPortionLabel(null);
+    baseDataRef.current = null;
+    setIsFavorite(false);
+    setShowCoachChat(false);
+    progress.value = 0;
+    setAppState('idle');
+    appStateRef.current = 'idle';
+  };
+
+  const showCoachChatRef = useRef(showCoachChat);
+  useEffect(() => {
+    showCoachChatRef.current = showCoachChat;
+  }, [showCoachChat]);
+
+  const navigationRef = useRef(navigation);
+  useEffect(() => {
+    navigationRef.current = navigation;
+  }, [navigation]);
+
+  // Recalcular macros según porción seleccionada
+  const handleSelectPortion = (preset) => {
+    if (!baseDataRef.current || !preset) return;
+    try {
+      Haptics.selectionAsync();
+    } catch (e) {}
+    setSelectedPortionLabel(preset.label);
+    const mult = typeof preset.multiplier === 'number' ? preset.multiplier : 1;
+    const baseCals = Number(baseDataRef.current.totalCalories) || 0;
+    const baseProt = Number(baseDataRef.current.totalProtein) || 0;
+    const baseCarbs = Number(baseDataRef.current.totalCarbs) || 0;
+    const baseFat = Number(baseDataRef.current.totalFat) || 0;
+
+    setEditableData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        totalCalories: Math.round(baseCals * mult),
+        totalProtein: Math.round(baseProt * mult),
+        totalCarbs: Math.round(baseCarbs * mult),
+        totalFat: Math.round(baseFat * mult),
+      };
+    });
+  };
+
+  // Alerta de confirmación al intentar volver hacia atrás habiendo sacado una foto
+  const handleBackAction = () => {
+    // Si está en el chat del coach, primero vuelve a la modal del producto
+    if (showCoachChatRef.current) {
+      setShowCoachChat(false);
+      return;
+    }
+
+    if (appStateRef.current === 'idle') {
+      if (navigationRef.current?.navigate) navigationRef.current.navigate('Home');
+      else if (navigationRef.current?.goBack) navigationRef.current.goBack();
+    } else {
+      Alert.alert(
+        "¿Volver a la pantalla principal?",
+        "¿Estás seguro de que deseas volver a la pantalla principal? Se perderá todo el progreso del escaneo actual.",
+        [
+          { text: "Continuar aquí", style: "cancel" },
+          {
+            text: "Sí, salir",
+            style: "destructive",
+            onPress: () => {
+              isLeavingRef.current = true;
+              resetScanState();
+              if (navigationRef.current?.navigate) navigationRef.current.navigate('Home');
+              else if (navigationRef.current?.goBack) navigationRef.current.goBack();
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  // Interceptar botón físico y gesto de deslizar atrás de Android (Hardware / Gesture Back)
+  useEffect(() => {
+    const onBackPress = () => {
+      // 1. Si está en el chat con el coach, el gesto atrás solo cierra el chat y vuelve a la modal
+      if (showCoachChatRef.current) {
+        setShowCoachChat(false);
+        return true; // Previene salir de la pantalla
+      }
+
+      // 2. Si sacó foto y está en la modal de resultado o procesando, preguntar confirmación
+      if (appStateRef.current !== 'idle') {
+        Alert.alert(
+          "¿Volver a la pantalla principal?",
+          "¿Estás seguro de que deseas volver a la pantalla principal? Se perderá todo el progreso del escaneo actual.",
+          [
+            { text: "Continuar aquí", style: "cancel" },
+            {
+              text: "Sí, salir",
+              style: "destructive",
+              onPress: () => {
+                isLeavingRef.current = true;
+                resetScanState();
+                if (navigationRef.current?.navigate) navigationRef.current.navigate('Home');
+                else if (navigationRef.current?.goBack) navigationRef.current.goBack();
+              }
+            }
+          ]
+        );
+        return true; // Previene salir directamente sin confirmar
+      }
+
+      // 3. Si está en reposo (idle), dejamos que el gesto atrás vuelva al Home normalmente
+      if (navigationRef.current?.navigate) {
+        navigationRef.current.navigate('Home');
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, []);
 
   const handleTakePicture = async () => {
     if (!cameraRef.current || appState !== 'idle') return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setAppState('capturing'); 
+    appStateRef.current = 'capturing';
 
     try {
       const photoData = await cameraRef.current.takePictureAsync({ quality: 0.5, base64: true, skipProcessing: true });
       setPhoto(photoData);
 
       setAppState('processing');
+      appStateRef.current = 'processing';
       progress.value = 0;
       progress.value = withTiming(90, { duration: 5000, easing: Easing.out(Easing.ease) });
 
@@ -741,40 +936,98 @@ export default function ScanScreen({ navigation }) {
       if (!result.isFood) {
           progress.value = 0;
           setAppState('idle');
+          appStateRef.current = 'idle';
           setPhoto(null);
           Alert.alert("Objeto no reconocido", "Parece que no hay comida en la foto. Zenit solo analiza alimentos.");
           return;
       }
 
-      setEditableData(result);
+      baseDataRef.current = result;
+      if (result.portionPresets && result.portionPresets.length > 0) {
+        const defaultPreset = result.portionPresets[0];
+        setSelectedPortionLabel(defaultPreset.label);
+        setEditableData({
+          ...result,
+          totalCalories: Math.round(result.totalCalories * defaultPreset.multiplier),
+          totalProtein: Math.round(result.totalProtein * defaultPreset.multiplier),
+          totalCarbs: Math.round(result.totalCarbs * defaultPreset.multiplier),
+          totalFat: Math.round(result.totalFat * defaultPreset.multiplier),
+        });
+      } else {
+        setSelectedPortionLabel('100%');
+        setEditableData(result);
+      }
       
       progress.value = withTiming(100, { duration: 350 });
       setTimeout(() => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setAppState('result');
+          appStateRef.current = 'result';
       }, 400);
 
     } catch (error) {
       console.error("Error oculto:", error);
       Alert.alert("Error Detectado", String(error.message || error));
       setAppState('idle');
+      appStateRef.current = 'idle';
       setPhoto(null);
     }
   };
 
   const handleRetake = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setPhoto(null);
-    setEditableData(null);
-    setIsFavorite(false);
-    setShowCoachChat(false);
-    progress.value = 0;
-    setAppState('idle');
+    resetScanState();
   };
 
+  // Guardar comida y sincronizar con el store global
   const handleSave = () => {
+    if (!editableData) return;
+    
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (navigation?.goBack) navigation.goBack();
+
+    addConsumedFood({
+      name: editableData.mealName || "Comida escaneada",
+      calories: Number(editableData.totalCalories) || 0,
+      protein: Number(editableData.totalProtein) || 0,
+      carbs: Number(editableData.totalCarbs) || 0,
+      fats: Number(editableData.totalFat) || 0,
+      imageUri: photo?.uri || null,
+      ingredients: editableData.ingredients || [],
+    });
+
+    isLeavingRef.current = true;
+    resetScanState();
+    if (navigation?.navigate) navigation.navigate('Home');
+    else if (navigation?.goBack) navigation.goBack();
+  };
+
+  // Acción cuando el usuario decide no comer el alimento escaneado (Victoria de disciplina)
+  const handleAvoidFood = () => {
+    if (!editableData) return;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    const avoidedCals = Number(editableData.totalCalories) || 0;
+    recordAvoidedFood({
+      name: editableData.mealName || "Comida evitada",
+      calories: avoidedCals,
+    });
+
+    Alert.alert(
+      "¡Gran victoria de disciplina! 🏆",
+      `Decidiste no comer "${editableData.mealName || 'este plato'}" y ahorraste ~${avoidedCals} kcal.\n\n¡Cada decisión consciente te acerca a tu meta, ${userName || 'campeón'}!`,
+      [
+        {
+          text: "¡Vamos!",
+          onPress: () => {
+            isLeavingRef.current = true;
+            resetScanState();
+            if (navigation?.navigate) navigation.navigate('Home');
+            else if (navigation?.goBack) navigation.goBack();
+          }
+        }
+      ]
+    );
   };
 
   // Manejo de estado de carga inicial de permisos
@@ -819,12 +1072,20 @@ export default function ScanScreen({ navigation }) {
       {appState === 'idle' && (
         <SafeAreaView className="flex-1 justify-between">
             <View className="flex-row justify-between items-center px-6 pt-2">
-                <TouchableOpacity onPress={() => navigation?.goBack && navigation.goBack()} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center">
+                <TouchableOpacity onPress={handleBackAction} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center">
                     <ChevronLeft size={24} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setFlash(f => f === 'off' ? 'on' : 'off'); }} className={`w-10 h-10 rounded-full items-center justify-center ${flash === 'on' ? 'bg-[#F97316]' : 'bg-black/40'}`}>
                     {flash === 'on' ? <Zap size={18} color="white" /> : <ZapOff size={18} color="white" />}
                 </TouchableOpacity>
+            </View>
+
+            <View className="items-center px-6">
+                <View className="bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/15">
+                    <Text className="text-white/90 text-xs font-medium">
+                        💡 Tip: Sacale a tu porción servida para mayor precisión
+                    </Text>
+                </View>
             </View>
 
             <View className="flex-row justify-around items-center pb-8 pt-4">
@@ -851,12 +1112,15 @@ export default function ScanScreen({ navigation }) {
         >
             <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             <View className="absolute inset-0 bg-black/40 backdrop-blur-md" />
-            <View className="bg-white/95 dark:bg-[#111111]/95 rounded-[40px] p-8 w-[80%] max-w-[320px] items-center justify-center border border-white/20 shadow-[0_20px_40px_rgba(0,0,0,0.2)]">
+            <View 
+                className="bg-white/95 rounded-[40px] p-8 w-[80%] max-w-[320px] items-center justify-center border border-white/20"
+                style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.2, shadowRadius: 40, elevation: 10 }}
+            >
                 <SlowPulseIcon />
                 <View className="h-14 justify-center mt-6">
                     <ProgressText progress={progress} />
                 </View>
-                <View className="w-full h-1.5 bg-gray-200 dark:bg-black rounded-full mt-6 overflow-hidden">
+                <View className="w-full h-1.5 bg-gray-200 rounded-full mt-6 overflow-hidden">
                     <Animated.View style={[progressStyle, { height: '100%', backgroundColor: '#F97316', borderRadius: 999 }]} />
                 </View>
             </View>
@@ -871,11 +1135,11 @@ export default function ScanScreen({ navigation }) {
               renderToHardwareTextureAndroid={true}
           >
              <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-             <LinearGradient colors={['transparent', isDark ? 'rgba(10,10,10,0.8)' : 'rgba(0,0,0,0.8)', isDark ? '#0A0A0A' : '#000000']} className="absolute inset-0" pointerEvents="none" />
+             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']} className="absolute inset-0" pointerEvents="none" />
 
              {!showCoachChat && (
                  <SafeAreaView className="absolute top-0 w-full px-4 pt-2 z-50" pointerEvents="box-none">
-                     <TouchableOpacity onPress={handleRetake} className="bg-white/20 w-10 h-10 rounded-full items-center justify-center backdrop-blur-md border border-white/30">
+                     <TouchableOpacity onPress={handleBackAction} className="bg-white/20 w-10 h-10 rounded-full items-center justify-center backdrop-blur-md border border-white/30">
                          <X color="white" size={24} />
                      </TouchableOpacity>
                  </SafeAreaView>
@@ -894,21 +1158,97 @@ export default function ScanScreen({ navigation }) {
                      keyboardDismissMode="on-drag"
                  >
                     <View style={{ height: SCREEN_HEIGHT * 0.55 }} />
-                    <View className="bg-white dark:bg-[#0A0A0A] rounded-t-[40px] pt-4 px-6 pb-40 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-                        <View className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full self-center mb-6" />
+                    <View 
+                        className="bg-white rounded-t-[40px] pt-4 px-6 pb-40"
+                        style={{ shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 10 }}
+                    >
+                        <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-6" />
 
                         <View className="flex-row justify-between items-start mt-2">
-                            <TextInput value={editableData.mealName} onChangeText={(t) => setEditableData({...editableData, mealName: t})} className="text-gray-900 dark:text-white text-4xl font-black tracking-tight p-0 m-0 flex-1" multiline selectionColor="#F97316" />
-                            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setIsFavorite(!isFavorite); }} className="ml-4 bg-gray-100 dark:bg-[#111111] w-12 h-12 rounded-full items-center justify-center border border-gray-200 dark:border-gray-800 shadow-sm">
+                            <TextInput 
+                                value={editableData.mealName} 
+                                onChangeText={(t) => setEditableData({...editableData, mealName: t})} 
+                                className="text-gray-900 text-3xl font-black tracking-tight flex-1 mr-2" 
+                                multiline 
+                                textAlignVertical="top"
+                                style={{ lineHeight: 36, paddingVertical: 4, minHeight: 44 }}
+                                selectionColor="#F97316" 
+                            />
+                            <TouchableOpacity 
+                                onPress={() => { Haptics.selectionAsync(); setIsFavorite(!isFavorite); }} 
+                                className="ml-2 bg-gray-100 w-12 h-12 rounded-full items-center justify-center border border-gray-200 mt-1"
+                            >
                                 <Heart size={22} color={isFavorite ? "#F97316" : "#9CA3AF"} fill={isFavorite ? "#F97316" : "transparent"} />
                             </TouchableOpacity>
                         </View>
                         
-                        <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, marginTop: 12, marginBottom: 32 }}>
+                        <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, marginTop: 12, marginBottom: 16 }}>
                             <Sparkles size={16} color="white" />
                             <TextInput value={String(editableData.totalCalories)} onChangeText={(t) => setEditableData({...editableData, totalCalories: t.replace(/[^0-9]/g, '')})} keyboardType="numeric" className="text-white font-black text-xl ml-2 p-0 m-0 min-w-[30px] text-center" selectionColor="white" />
                             <Text className="text-white font-black text-lg ml-1">KCAL</Text>
                         </LinearGradient>
+
+                        {/* Selector de porciones en 2 hileras (Grid 2x2) sin scroll, tono negro #0A0A0A (Estilos inline a prueba de crashes) */}
+                        {baseDataRef.current?.portionPresets && baseDataRef.current.portionPresets.length > 0 && (
+                            <View style={[{ backgroundColor: '#0A0A0A', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#1F2937', marginBottom: 24 }, portionBoxShadow]}>
+                                <View className="flex-row justify-between items-center mb-3">
+                                    <View className="flex-row items-center">
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F97316', marginRight: 8 }} />
+                                        <Text className="text-white font-bold text-xs uppercase tracking-wider">
+                                            {baseDataRef.current.servingType === 'container_or_bulk' ? 'Tamaño de tu porción' : 'Porción consumida'}
+                                        </Text>
+                                    </View>
+                                    {baseDataRef.current.servingType === 'container_or_bulk' && (
+                                        <Text style={{ color: '#9CA3AF', fontSize: 11, fontWeight: '600' }}>
+                                            Envase total: {baseDataRef.current.totalCalories} kcal
+                                        </Text>
+                                    )}
+                                </View>
+                                <View className="flex-row flex-wrap justify-between">
+                                    {baseDataRef.current.portionPresets.slice(0, 4).map((preset, idx) => {
+                                        const isSelected = selectedPortionLabel === preset.label;
+                                        return (
+                                            <TouchableOpacity
+                                                key={idx}
+                                                onPress={() => handleSelectPortion(preset)}
+                                                activeOpacity={0.7}
+                                                style={{
+                                                    width: '48.5%',
+                                                    paddingVertical: 12,
+                                                    paddingHorizontal: 8,
+                                                    borderRadius: 16,
+                                                    marginBottom: 10,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderWidth: 1,
+                                                    backgroundColor: isSelected ? '#F97316' : '#141414',
+                                                    borderColor: isSelected ? '#F97316' : '#1F2937',
+                                                    ...(isSelected ? {
+                                                        shadowColor: '#F97316',
+                                                        shadowOffset: { width: 0, height: 2 },
+                                                        shadowOpacity: 0.35,
+                                                        shadowRadius: 4,
+                                                        elevation: 3,
+                                                    } : {})
+                                                }}
+                                            >
+                                                <Text 
+                                                    style={{
+                                                        fontSize: 12,
+                                                        fontWeight: '900',
+                                                        textAlign: 'center',
+                                                        color: isSelected ? '#ffffff' : '#D1D5DB'
+                                                    }} 
+                                                    numberOfLines={1}
+                                                >
+                                                    {preset.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+                        )}
 
                         <View className="flex-row justify-between mb-8 gap-x-3">
                             <MacroCard label="Proteína" value={editableData.totalProtein} onChangeText={(t) => setEditableData({...editableData, totalProtein: t})} />
@@ -916,13 +1256,42 @@ export default function ScanScreen({ navigation }) {
                             <MacroCard label="Grasas" value={editableData.totalFat} onChangeText={(t) => setEditableData({...editableData, totalFat: t})} />
                         </View>
 
-                        <TouchableOpacity activeOpacity={0.8} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCoachChat(true); }} className="flex-row items-center justify-center py-4 rounded-2xl mb-10 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#111111]">
-                            <Sparkles size={20} color="#F97316" />
-                            <Text className="text-gray-900 dark:text-white font-bold text-base ml-2 tracking-wide">Consultar Zenit Coach</Text>
+                        <TouchableOpacity 
+                            activeOpacity={0.85} 
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCoachChat(true); }} 
+                            style={[{ marginBottom: 12, borderRadius: 16, overflow: 'hidden' }, coachBtnShadow]}
+                        >
+                            <LinearGradient
+                                colors={ZENIT_GRADIENT}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 16 }}
+                            >
+                                <Sparkles size={20} color="white" />
+                                <Text className="text-white font-black text-base ml-2 tracking-wide">Consultar Zenit Coach</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            activeOpacity={0.85} 
+                            onPress={handleAvoidFood} 
+                            style={[{ marginBottom: 36, borderRadius: 16, overflow: 'hidden' }, avoidBtnShadow]}
+                        >
+                            <LinearGradient
+                                colors={['#059669', '#10B981']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 16 }}
+                            >
+                                <ShieldCheck size={20} color="white" />
+                                <Text className="text-white font-black text-base ml-2 tracking-wide">
+                                    Decidí no comerlo
+                                </Text>
+                            </LinearGradient>
                         </TouchableOpacity>
 
                         <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Ingredientes</Text>
+                            <Text className="text-gray-900 font-bold text-xl tracking-tight">Ingredientes</Text>
                             <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setEditableData({...editableData, ingredients: [...editableData.ingredients, ""]}); }}>
                                 <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
                                     <Plus size={14} color="white" />
@@ -931,12 +1300,12 @@ export default function ScanScreen({ navigation }) {
                             </TouchableOpacity>
                         </View>
 
-                        <View className="bg-gray-50 dark:bg-[#111111] rounded-3xl p-2 border border-gray-100 dark:border-gray-800 mb-4">
+                        <View className="bg-gray-50 rounded-3xl p-2 border border-gray-100 mb-4">
                             {editableData.ingredients.map((ing, i) => (
-                                <View key={i} className={`py-1 px-4 flex-row items-center justify-between ${i !== editableData.ingredients.length - 1 ? 'border-b border-gray-200 dark:border-gray-800/50' : ''}`}>
+                                <View key={i} className={`py-1 px-4 flex-row items-center justify-between ${i !== editableData.ingredients.length - 1 ? 'border-b border-gray-200' : ''}`}>
                                     <View className="flex-row items-center flex-1">
                                         <LinearGradient colors={ZENIT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: 8, height: 8, borderRadius: 4, marginRight: 12 }} />
-                                        <TextInput value={ing} onChangeText={(t) => { const newIng = [...editableData.ingredients]; newIng[i] = t; setEditableData({...editableData, ingredients: newIng}); }} placeholder="Nombre..." placeholderTextColor="#9CA3AF" className="text-gray-800 dark:text-gray-200 text-base font-medium flex-1 py-3 p-0 m-0 capitalize" selectionColor="#F97316" />
+                                        <TextInput value={ing} onChangeText={(t) => { const newIng = [...editableData.ingredients]; newIng[i] = t; setEditableData({...editableData, ingredients: newIng}); }} placeholder="Nombre..." placeholderTextColor="#9CA3AF" className="text-gray-800 text-base font-medium flex-1 py-3 p-0 m-0 capitalize" selectionColor="#F97316" />
                                     </View>
                                     <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); const newIng = [...editableData.ingredients]; newIng.splice(i, 1); setEditableData({...editableData, ingredients: newIng}); }} className="p-2">
                                         <X size={18} color="#9CA3AF" />
@@ -945,7 +1314,7 @@ export default function ScanScreen({ navigation }) {
                             ))}
                         </View>
                     </View>
-                    <View className="w-full h-40 bg-white dark:bg-[#0A0A0A] mt-[-2px]" />
+                    <View className="w-full h-40 bg-white mt-[-2px]" />
                  </ScrollView>
              </KeyboardAvoidingView>
 
@@ -954,15 +1323,15 @@ export default function ScanScreen({ navigation }) {
                     isDark={isDark} 
                     editableData={editableData} 
                     onClose={() => setShowCoachChat(false)} 
-                    // ACÁ SE PASAN TUS DATOS DEL ONBOARDING (A FUTURO CONTEXTO GLOBAL):
+                    onAvoidFood={handleAvoidFood}
                     userData={{
-                        name: "Nacho",
-                        goal: "Ganar masa muscular (Volumen limpio)",
+                        name: userName || "Nacho",
+                        goal: userGoal || "Ganar masa muscular (Volumen limpio)",
                         macros: {
-                            calories: 2522,
-                            protein: 141,
-                            carbs: 393,
-                            fats: 43
+                            calories: Math.max(0, (targetMacros?.calories || 2500) - (consumedMacros?.calories || 0)),
+                            protein: Math.max(0, (targetMacros?.protein || 150) - (consumedMacros?.protein || 0)),
+                            carbs: Math.max(0, (targetMacros?.carbs || 300) - (consumedMacros?.carbs || 0)),
+                            fats: Math.max(0, (targetMacros?.fats || 50) - (consumedMacros?.fats || 0))
                         }
                     }}
                  />
@@ -987,11 +1356,11 @@ export default function ScanScreen({ navigation }) {
 // SUBCOMPONENTE: MACROCARD (MEMOIZADO 60FPS)
 // ==========================================
 const MacroCard = React.memo(({ label, value, onChangeText }) => (
-    <View className="flex-1 bg-gray-50 dark:bg-[#111111] py-5 px-2 rounded-3xl border border-gray-100 dark:border-gray-800 items-center">
-        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-black tracking-widest uppercase mb-1">{label}</Text>
+    <View className="flex-1 bg-gray-50 py-5 px-2 rounded-3xl border border-gray-100 items-center">
+        <Text className="text-gray-400 text-[10px] font-black tracking-widest uppercase mb-1">{label}</Text>
         <View className="flex-row items-baseline">
-            <TextInput value={String(value)} onChangeText={(t) => onChangeText(t.replace(/[^0-9.]/g, ''))} keyboardType="numeric" className="text-gray-900 dark:text-white text-2xl font-black p-0 m-0 min-w-[24px] text-center" selectionColor="#F97316" />
-            <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs ml-1">g</Text>
+            <TextInput value={String(value)} onChangeText={(t) => onChangeText(t.replace(/[^0-9.]/g, ''))} keyboardType="numeric" className="text-gray-900 text-2xl font-black p-0 m-0 min-w-[24px] text-center" selectionColor="#F97316" />
+            <Text className="text-gray-500 font-bold text-xs ml-1">g</Text>
         </View>
     </View>
 ));

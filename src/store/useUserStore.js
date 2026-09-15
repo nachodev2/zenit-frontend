@@ -7,38 +7,72 @@ export const useUserStore = create(
     (set) => ({
       // 1. Estados
       isOnboarded: false,
+      name: 'Nacho',
+      goal: 'Ganar Músculo',
       createdAt: null, // Vital para bloquear fechas anteriores en el calendario
       targetMacros: { calories: 0, protein: 0, carbs: 0, fats: 0 },
       consumedMacros: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+      meals: [], // Lista de comidas registradas hoy
+      avoidedCalories: 0, // Kcal ahorradas por decisiones conscientes
+      avoidedCount: 0, // Cantidad de tentaciones evitadas
       
       // 2. Historial de días pasados
       // Formato: { "2026-09-03": { status: "success", macros: {...} } }
       history: {},
 
       // 3. Acción para guardar al terminar el onboarding (Solo se usa una vez)
-      saveOnboardingData: (macros) => set({
+      saveOnboardingData: (macros, profile = {}) => set((state) => ({
         targetMacros: macros,
+        name: profile.name || state.name || 'Nacho',
+        goal: profile.goal || state.goal || 'Ganar Músculo',
         isOnboarded: true,
         createdAt: new Date().toISOString(), 
-        consumedMacros: { calories: 0, protein: 0, carbs: 0, fats: 0 } 
-      }),
+        consumedMacros: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+        meals: []
+      })),
 
-      // --- NUEVO: Acción para editar macros desde el Home ---
+      // --- Acción para editar macros desde el Home ---
       updateMacros: (newMacros) => set({
         targetMacros: newMacros
       }),
 
-      // 4. Acción para la cámara de Gemini (sumar comida)
-      addConsumedFood: (foodMacros) => set((state) => ({
-        consumedMacros: {
-          calories: state.consumedMacros.calories + foodMacros.calories,
-          protein: state.consumedMacros.protein + foodMacros.protein,
-          carbs: state.consumedMacros.carbs + foodMacros.carbs,
-          fats: state.consumedMacros.fats + foodMacros.fats,
-        }
+      // 4. Acción para la cámara de Gemini (sumar comida y guardar en lista)
+      addConsumedFood: (foodItem) => set((state) => {
+        const cals = Number(foodItem.calories) || 0;
+        const prot = Number(foodItem.protein) || 0;
+        const carbs = Number(foodItem.carbs) || 0;
+        const fats = Number(foodItem.fats) || 0;
+
+        const newMeal = {
+          id: Date.now().toString(),
+          name: foodItem.name || 'Comida escaneada',
+          calories: cals,
+          protein: prot,
+          carbs: carbs,
+          fats: fats,
+          imageUri: foodItem.imageUri || null,
+          ingredients: foodItem.ingredients || [],
+          timestamp: new Date().toISOString(),
+        };
+
+        return {
+          consumedMacros: {
+            calories: state.consumedMacros.calories + cals,
+            protein: state.consumedMacros.protein + prot,
+            carbs: state.consumedMacros.carbs + carbs,
+            fats: state.consumedMacros.fats + fats,
+          },
+          meals: [...state.meals, newMeal]
+        };
+      }),
+
+      // 5. Acción cuando el usuario decide evitar una tentación (Victoria de disciplina)
+      recordAvoidedFood: (foodItem) => set((state) => ({
+        avoidedCalories: (state.avoidedCalories || 0) + (Number(foodItem?.calories) || 0),
+        avoidedCount: (state.avoidedCount || 0) + 1,
       })),
 
-      // 5. Acción para guardar el resultado de un día en el historial
+      // 6. Acción para guardar el resultado de un día en el historial
       saveDailyResult: (dateString, status, finalMacros) => set((state) => ({
         history: {
           ...state.history,
@@ -49,11 +83,14 @@ export const useUserStore = create(
         }
       })),
       
-      // 6. Resetear la cuenta (Logout / Debug)
+      // 7. Resetear la cuenta (Logout / Debug)
       resetStore: () => set({ 
         isOnboarded: false, 
         createdAt: null,
         consumedMacros: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+        meals: [],
+        avoidedCalories: 0,
+        avoidedCount: 0,
         history: {}
       })
     }),
