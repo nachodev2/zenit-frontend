@@ -121,6 +121,8 @@ export const useUserStore = create(
         });
       },
 
+      resetDailyScans: () => set({ dailyScans: { date: '', count: 0 } }),
+
       // 8. Resetear la cuenta (Logout / Debug)
       resetStore: () => set({ 
         isOnboarded: false, 
