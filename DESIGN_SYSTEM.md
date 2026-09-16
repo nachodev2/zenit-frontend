@@ -52,14 +52,13 @@ export const ZENIT_GRADIENT = ['#DC2626', '#F97316'];
 - **Tarjetas Principales (Cards):** `#FFFFFF` puro.
 - **Bordes de Tarjetas:** `#F1F5F9` (1px, sutil, jamás negro ni gris pesado).
 - **Superficies Secundarias (Inputs, Pills inactivas):** `#F8FAFC` o `#F1F5F9`.
-- **Fondos de Acento Naranja Soft:** `#FFF7ED` con borde `#FED7AA`.
+- **Fondos de Acento Coloreados (PROHIBIDOS EN CARDS/BLOQUES):** Queda terminantemente prohibido rellenar tarjetas, selectores de porción o bloques de calorías con fondos anaranjados pastel o crema (`#FFF7ED` / `#FED7AA`). Para contrastar con el fondo, se usa el fondo nativo del contenedor (`#FFFFFF` o `#0F172A`) enmarcado con el **borde en LinearGradient Zenit**.
 
-### Tipografía y Contraste
-- **Títulos y Métricas Primarias:** `#0F172A` (Negro carbón azabache, nunca gris).
-- **Subtítulos y Jerarquía Media:** `#475569` o `#64748B`.
-- **Unidades, Placeholders y Fechas:** `#94A3B8`.
-- **Textos de Acento / Estado:** `#EA580C` o `#C2410C` (Naranja vivo legible sobre blanco).
-- **Textos sobre Fondo Oscuro / Cápsula:** `#FFFFFF` puro.
+### Tipografía y Contraste (Regla Bimodal Estricta)
+- **Títulos Importantes y Rótulos de Destacado:** `#EA580C` o `#F97316` (Naranja ardiente Zenit para destacar jerarquía clave).
+- **Métricas Primarias y Números:** `#0F172A` / `#000000` en Modo Claro y `#FFFFFF` en Modo Oscuro (contraste puro, nunca gris lavado).
+- **Textos Generales y Subtítulos:** Estrictamente **Negro** (`#0F172A` / `#475569`) en Modo Claro o **Blanco** (`#FFFFFF` / `#CBD5E1`) en Modo Oscuro. Prohibido usar textos cobrizos, marrones o tonos intermedios sobre las cards.
+- **Unidades, Placeholders y Fechas:** `#94A3B8` en claro, `#64748B` en oscuro.
 
 ---
 
@@ -114,12 +113,21 @@ La app se entiende sin leer párrafos densos gracias a la escala numérica:
   ```
 - **Texto e Icono:** Blanco `#FFFFFF`, `fontWeight: '900'`, centrado.
 
-### D. Botón Secundario Zenit (Borde en Gradiente + Fondo Blanco Modal)
-- **Concepto:** Botón elegante que respeta el fondo de la modal (`#FFFFFF`), enmarcado por un fino borde con el degradado oficial de Zenit.
-- **Estructura:**
+### D. Patrón de Dos Botones Contiguos (Primario + Secundario Contrastante)
+- **Regla Suprema de Emparejamiento (Duo-Action):**  
+  Cuando en una interfaz (modal, tarjeta, diálogo de confirmación o barra de acciones) se colocan dos botones contiguos uno al lado del otro:
+  1. **Botón Primario (Acción Principal):**
+     - Relleno sólido `LinearGradient` con `colors={ZENIT_GRADIENT}` (`#DC2626` ➔ `#F97316`).
+     - Texto e icono en blanco puro `#FFFFFF`, `fontWeight: '900'`.
+     - Sombra cálida de acción (`shadowColor: '#F97316'`, `shadowOpacity: 0.28`).
+  2. **Botón Contrastante / Secundario (Acción Alternativa o Cancelar):**
+     - **Relleno Interior (Background Contextual):** DEBE tener obligatoriamente el color de fondo exacto del contenedor o superficie padre donde vive. Si la modal o card es `#FFFFFF`, el relleno interior es `#FFFFFF`; si es una superficie gris `#F8FAFC`, adopta `#F8FAFC`; y si la superficie es oscura `#0F172A` (o en futuro Dark Theme), adopta ese mismo color oscuro. Jamás inventar un gris intermedio o color plano ajeno.
+     - **Borde Exterior:** Marco fino de `1.5px` renderizado con el `LinearGradient` oficial de Zenit (`ZENIT_GRADIENT`), logrado mediante un contenedor padre con padding de `1.5px`.
+     - **Tipografía e Icono:** En color naranja ardiente de contraste (`#EA580C` o `#C2410C`), `fontWeight: '900'`, logrando perfecta simetría y armonía con el botón primario.
+- **Estructura Técnica:**
   - Contenedor exterior: `LinearGradient` con `colors={ZENIT_GRADIENT}`, `borderRadius: 18`, `padding: 1.5`.
-  - Contenedor interior: `backgroundColor: '#FFFFFF'`, `borderRadius: 16.5`, `paddingVertical: 14`.
-  - Texto e Icono: `#EA580C`, `fontWeight: '900'`, `fontSize: 14`.
+  - Contenedor interior: `backgroundColor: containerBgColor` (ej: `#FFFFFF`), `borderRadius: 16.5`, `paddingVertical: 14`.
+  - Contenido: Texto e icono con `#EA580C`, `fontWeight: '900'`, `fontSize: 14`.
 
 ### E. Botón Flotante Redondo de Edición (`CircularActionButton`)
 - Como el botón del lápiz en la esquina superior derecha de la captura:
@@ -143,15 +151,23 @@ La app se entiende sin leer párrafos densos gracias a la escala numérica:
 - **Resolución HD Automática:** En Open Food Facts se reemplazan dinámicamente las miniaturas de baja resolución (`.100.jpg`, `.200.jpg`) por packshots de alta definición (`.400.jpg`) mediante `toHighResImage()`.
 - **Deduplicación Canónica:** Al buscar productos de consumo masivo (ej: Monster Energy, Havanna, Lucchetti), el buscador normaliza la clave (`brand + name`) ignorando palabras de relleno (`lata`, `ml`, `pack`, etc.) y prioriza las variedades oficiales argentinas curadas, eliminando por completo el spam de 50 entradas duplicadas generadas por usuarios.
 
+### I. Tarjetas y Bloques de Destacado / Contraste con Borde Gradiente (`ZenitHighlightCard`)
+- **Problema que Resuelve:** En pantallas o modales donde un bloque deba contrastar fuertemente con el fondo (ej: la tarjeta de selección de porciones o la tarjeta de calorías totales en la modal de producto), **NUNCA debe pintarse el fondo de color naranja pastel, crema o amarillento (`#FFF7ED`)**. Esos fondos ensucian la estética premium y colisionan con el Dark Theme.
+- **Regla Canónica de Contraste:**
+  1. **Fondo Interior (Background):** DEBE ser exactamente el color de fondo del contenedor padre (`#FFFFFF` en Modo Claro, `#0F172A`/`#020617` en Modo Oscuro).
+  2. **Borde Exterior:** Marco fino de `1.5px` en `LinearGradient` oficial de Zenit (`colors={['#DC2626', '#F97316']}`).
+  3. **Títulos y Rótulos Importantes:** En naranja ardiente oficial de la marca (`#EA580C` o `#F97316`).
+  4. **Resto del Texto, Números y Subtítulos:** Estrictamente **Negro azabache (`#0F172A`)** en Modo Claro o **Blanco puro (`#FFFFFF`)** en Modo Oscuro. Prohibido usar marrones, cobrizos u otros colores intermedios.
+
 ---
 
 ## 5. 📱 Cómo Replicar Esta Estética en Cada Sección de la App
 
 ### 1. 🍗 Pestaña de Comidas (`FoodScreen.js`)
 - **Catálogo de Alimentos:** Tarjetas blancas limpias con bordes `#F1F5F9`. Cero texto innecesario.
-- **Modal de Detalle:** El bloque de macros debe usar exactamente los badges con los colores de soporte inspirados en la cápsula:
-  - Kcal con llama 🔥 en fondo `#FFF7ED` y texto `#EA580C`.
-  - Proteína, Carbos y Grasa como pills visuales sin párrafos largos.
+- **Modal de Detalle de Producto:** 
+  - **Bloque de Porciones y Calorías Totales:** Aplican estrictamente el patrón `ZenitHighlightCard` (fondo blanco limpio + borde en `LinearGradient` Zenit + título en naranja `#EA580C` + números y textos en negro/blanco puro según el tema). **Cero fondos anaranjados/crema**.
+  - **Cards de Macros Secundarias (Prot, Carb, Grasa):** Cards blancas limpias con bordes `#F1F5F9` y textos negro/blanco.
 - **Carro de Recetas:** La barra flotante inferior replica el estilo de la cápsula inteligente: fondo con degradado Zenit `#DC2626` ➔ `#F97316`, píldora con esquinas redondeadas, texto blanco y badges nítidos.
 
 ### 2. 🏋️ Pestaña de Gimnasio (`GymScreen.js`)
@@ -182,6 +198,7 @@ La app se entiende sin leer párrafos densos gracias a la escala numérica:
 3. ❌ **No escribir textos largos en cards:** Si un usuario tiene que leer más de dos renglones para entender una tarjeta, el diseño falló. Usar números grandes + etiquetas en mayúscula (`DISPO`, `RESTANTES`, `META`).
 4. ❌ **No usar botones rectangulares filosos:** El radio de esquina mínimo en Zenit es `14px` para elementos chicos y `18px` – `24px` para tarjetas y botones principales.
 5. ❌ **No usar sombras negras duras:** Las sombras deben tener `shadowOpacity: 0.04` a `0.08` para cards neutras y `shadowColor: '#F97316'` con `shadowOpacity: 0.25` para botones de acción.
+6. ❌ **No usar fondos anaranjados pastel, crema o amarillentos en tarjetas (`#FFF7ED` / `#FED7AA`):** Ensucien la limpieza visual, restan nitidez al número y colisionan con el Dark Theme. Todo bloque que deba contrastar con el fondo (como el selector de porciones o la tarjeta de calorías en la modal de alimentos) debe usar **fondo limpio idéntico al contenedor + borde fino en LinearGradient Zenit + títulos en naranja `#EA580C` + textos/números en blanco o negro según el tema**.
 
 ---
 
@@ -272,4 +289,115 @@ La app se entiende sin leer párrafos densos gracias a la escala numérica:
   </Text>
 </View>
 ```
+
+### Botón Secundario Contrastante con Borde en Gradiente (`ZenitContrastButton`)
+```jsx
+<TouchableOpacity
+  activeOpacity={0.85}
+  onPress={onPress}
+  style={{
+    borderRadius: 18,
+    overflow: 'hidden',
+  }}
+>
+  <LinearGradient
+    colors={['#DC2626', '#F97316']}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 0 }}
+    style={{
+      padding: 1.5, // Grosor exacto del borde en degradado
+      borderRadius: 18,
+    }}
+  >
+    <View
+      style={{
+        backgroundColor: containerBgColor || '#FFFFFF', // Respeta el color de fondo del contenedor padre
+        borderRadius: 16.5,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 8,
+      }}
+    >
+      {Icon && <Icon size={18} color="#EA580C" strokeWidth={2.5} />}
+      <Text style={{ color: '#EA580C', fontSize: 14, fontWeight: '900', letterSpacing: 0.2 }}>
+        {title}
+      </Text>
+    </View>
+  </LinearGradient>
+</TouchableOpacity>
+```
+
+### Tarjeta Destacada con Borde en Gradiente (`ZenitHighlightCard`)
+```jsx
+{/* Tarjeta de alto contraste para porciones, calorías o bloques clave */}
+<LinearGradient
+  colors={['#DC2626', '#F97316']}
+  start={{ x: 0, y: 0 }}
+  end={{ x: 1, y: 0 }}
+  style={{
+    padding: 1.5, // Borde fino en degradado oficial
+    borderRadius: 20,
+    marginVertical: 6,
+  }}
+>
+  <View
+    style={{
+      backgroundColor: containerBgColor || '#FFFFFF', // Fondo idéntico al contenedor (blanco o dark)
+      borderRadius: 18.5,
+      padding: 16,
+    }}
+  >
+    {/* Título importante siempre en Naranja Ardiente */}
+    <Text style={{ color: '#EA580C', fontSize: 13, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+      {sectionTitle}
+    </Text>
+
+    {/* Resto de contenido, métricas y subtítulos en Negro (Light) o Blanco (Dark) */}
+    <Text style={{ color: isDark ? '#FFFFFF' : '#0F172A', fontSize: 18, fontWeight: '900', marginTop: 4 }}>
+      {primaryValue}
+    </Text>
+    <Text style={{ color: isDark ? '#94A3B8' : '#475569', fontSize: 12, fontWeight: '500', marginTop: 2 }}>
+      {description}
+    </Text>
+  </View>
+</LinearGradient>
+```
+
+---
+
+## 8. 🌓 Arquitectura & Preparación para Dark Theme (Future-Proofing)
+
+> **Mandato Arquitectónico de Zenit:**  
+> Toda la lógica de componentes, estilos, tokens y pantallas que hagan referencia a la identidad visual de la app **DEBEN concebirse y estructurarse teniendo en cuenta que el proyecto migrará o incorporará soporte completo para Dark Theme en futuras iteraciones**.
+
+### 1. Superficies y Contenedores Adaptativos (Context-Aware Backgrounds)
+- **Cero fondos fijos inflexibles:** Las tarjetas, modales, hojas flotantes y contenedores no deben asumir que el fondo siempre será `#FFFFFF` o `#FAFAFA`.
+- Los botones secundarios y contrastantes ([`ZenitContrastButton`](#d-patrón-de-dos-botones-contiguos-primario--secundario-contrastante)) y las tarjetas destacadas ([`ZenitHighlightCard`](#i-tarjetas-y-bloques-de-destacado--contraste-con-borde-gradiente-zenithighlightcard)) deben tomar su relleno interno del fondo de su contenedor padre (`containerBgColor`).
+  - *En Modo Claro:* Relleno `#FFFFFF` o `#F8FAFC`.
+  - *En Modo Oscuro:* Relleno `#0F172A` o `#020617` (haciendo que el borde ardiente de Zenit resalte con máxima sofisticación sin alterar la silueta).
+
+### 2. El Gradiente Zenit como Firma Inmutable
+- La firma energética de la marca (`ZENIT_GRADIENT = ['#DC2626', '#F97316']`) **se mantiene idéntica en ambos temas**.
+- En Modo Oscuro, el gradiente rojo ➔ naranja adquiere un contraste de nivel "Cyber-OLED" superior, por lo que nunca debe reemplazarse por colores apagados o grises.
+
+### 3. Inversión Semántica de Textos y Contraste
+Al estructurar constantes o clases de estilos, prever la inversión de jerarquía:
+- **Títulos y Métricas Titán:** `#0F172A` (Claro) ➔ `#F8FAFC` o `#FFFFFF` (Oscuro).
+- **Subtítulos y Jerarquía Media:** `#64748B` (Claro) ➔ `#94A3B8` (Oscuro).
+- **Placeholders y Etiquetas de Estado Inactivo:** `#94A3B8` (Claro) ➔ `#64748B` (Oscuro).
+- **Acentos Naranja / Estados:** `#EA580C` (Claro) ➔ `#F97316` (Oscuro, más luminoso para fondo negro).
+
+### 4. Bordes y Sombras en Dark Mode
+- **Bordes de Tarjetas:** De `#F1F5F9` pasarán a `#1E293B` o `#334155` (1px, sutiles y limpios).
+- **Sombras:** Las sombras difusas negras pierden impacto en fondos oscuros. En Modo Oscuro se reemplazan por bordes de gradiente sutiles o un resplandor cálido tenue (`shadowColor: '#F97316'`, `shadowOpacity: 0.35`) en botones de acción.
+
+### 5. Regla Bimodal Estricta de Texto (Blanco / Negro)
+- **Cero textos coloridos intermedios:** Queda prohibido usar textos marrones, cobrizos o amarillentos para descripciones o valores secundarios.
+- **Títulos Destacados:** Naranja ardiente oficial (`#EA580C` / `#F97316`).
+- **Todo el resto de los textos y números:** Estrictamente **Negro azabache** (`#0F172A` / `#000000`) en tema claro, o **Blanco puro** (`#FFFFFF`) en tema oscuro. Esta disciplina garantiza legibilidad absoluta y consistencia visual en cualquier pantalla.
+
+
 

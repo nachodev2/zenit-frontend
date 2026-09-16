@@ -219,6 +219,41 @@ export const useUserStore = create(
 
       resetDailyScans: () => set({ dailyScans: { date: '', count: 0 } }),
 
+      // 7.b. Acciones para cuota diaria de interacciones con el Coach (8 al día, compartidas entre IA y código de barras)
+      getRemainingCoachInteractions: (maxInteractions = 8) => {
+        const today = getTodayDateString();
+        const daily = get().dailyCoachInteractions;
+        if (!daily || daily.date !== today) {
+          return maxInteractions;
+        }
+        return Math.max(0, maxInteractions - (Number(daily.count) || 0));
+      },
+
+      getDailyCoachInteractionsCount: () => {
+        const today = getTodayDateString();
+        const daily = get().dailyCoachInteractions;
+        if (!daily || daily.date !== today) {
+          return 0;
+        }
+        return Number(daily.count) || 0;
+      },
+
+      incrementCoachInteractions: () => {
+        const today = getTodayDateString();
+        set((state) => {
+          const isSameDay = state.dailyCoachInteractions?.date === today;
+          const currentCount = isSameDay ? (Number(state.dailyCoachInteractions?.count) || 0) : 0;
+          return {
+            dailyCoachInteractions: {
+              date: today,
+              count: currentCount + 1,
+            }
+          };
+        });
+      },
+
+      resetDailyCoachInteractions: () => set({ dailyCoachInteractions: { date: '', count: 0 } }),
+
       // 8. Acciones de Hidratación
       getDailyWater: () => {
         const today = getTodayDateString();

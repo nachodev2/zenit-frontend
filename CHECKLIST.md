@@ -145,10 +145,44 @@ Documento centralizado para registrar ajustes finos, ideas de pulido visual y de
 - [x] **Integración con Open Food Facts & Catálogo Argentino**: Imágenes apetitosas precargadas para productos nacionales masivos (La Serenísima, Lucchetti, Arcor, Granix, Gallo, Quaker, etc.).
 - [x] **Alineación 100% con `DESIGN_SYSTEM.md`**: Implementación canónica del **Anillo Hero Kcal (`#DC2626` ➔ `#F97316`)**, el **Trío de Sub-anillos (`PROT`, `CARB`, `GRASA`)**, la **Píldora Inteligente de IA (`SmartInsightCapsule` en `#0F172A`)** y los botones primarios con sombra cálida.
 
+### ✅ Completadas
+- [x] **Conexión de escáner de código de barras físico con cámara**: Integrado directamente en el escáner nativo (`ScanScreen`) con alternador *Foto IA / Código de Barras*, detección automática y apertura de modal de resultado idéntica a Gemini.
+- [x] **Modo Predeterminado Zenit AI y Reset**: Cada vez que el usuario vuelve o toca el escáner, se resetea automáticamente a Foto IA.
+- [x] **Cuotas del Zenit Coach**: 8 interacciones diarias compartidas (de hasta 4 mensajes cada una) entre alimentos analizados con IA y códigos de barras.
+- [x] **Código de barras ilimitado**: Escaneo libre sin consumo de cupo diario de escaneos IA.
+
 ### 📌 Pendientes / Por revisar
-- [ ] Conectar escáner de código de barras físico con cámara (`expo-barcode-scanner` / `CameraView` de `expo-camera`) dentro del modal de búsqueda por código de barras.
-- [ ] Sincronización en la nube (Supabase / Backend) de los productos comunitarios cargados por los usuarios para alimentar de forma colaborativa la base de datos abierta de Zenit.
 - [ ] Marcado de favoritos directo desde `FoodScreen` para recetas propias.
+
+---
+
+## 🗄️ Base de Datos, Motor de Búsqueda y Catálogo de Alimentos (Roadmap Prioritario)
+
+### 📌 Pendientes / Por realizar
+- [x] **0. Carga Masiva y Ampliación del Catálogo de Alimentos Argentinos (`POPULAR_ARGENTINE_PRODUCTS`)**:
+  - Incorporar una selección exhaustiva y curada de más de 105 productos nacionales habituales (lácteos *La Serenísima* / *Ilolay*, galletitas *Granix* / *Traviata* / *Pepitos* / *Don Satur* / *Rumba*, pastas *Lucchetti* / *Matarazzo*, alfajores *Havanna* / *Jorgito* / *Guaymallén*, bebidas, snacks *Lays* / *Doritos*, proteínas, etc.).
+  - Sin repetirse (deduplicados por código de barras real EAN-13).
+  - Fotos de calidad con estilo e-commerce uniforme (producto nítido, sin fondo invasivo o PNG recortado).
+  - Normalización precisa de porciones: tipificar si se consume por unidad/envase (`1 lata`, `1 pote`, `1 unidad`, `1 alfajor`, `1 empanada`) o pesado en báscula (`100g`).
+- [x] **1. Estandarización y Calidad Visual de Imágenes**:
+  - Unificar todas las fotos de productos para que tengan el mismo estilo: alta calidad, sin fondo invasivo (PNG silueteado / fondo neutro recortado) y visualmente nítidas.
+  - Eliminar fotos de baja calidad, borrosas o con fondos dispares provenientes de Open Food Facts mediante curación local y fallbacks limpios estilo e-commerce.
+- [x] **2. Búsqueda Flexible y Tolerante a Errores (Fuzzy & Token Search)**:
+  - Búsqueda tolerante por palabras clave sueltas: si el usuario escribe *"Panerita"*, debe encontrar *"La Panerita"*; si escribe *"Serenisima"*, encontrar *"La Serenísima"*.
+  - Normalización de tildes/acentos, eliminación de stopwords y artículos (*el, la, los, de*).
+  - Algoritmo de ponderación (match en nombre > match en marca > match en categoría).
+- [x] **3. Optimización Drástica de Velocidad de Búsqueda**:
+  - Implementar debounce optimizado (280ms) para no saturar el hilo principal ni la red en cada letra escrita.
+  - Cancelación de peticiones obsoletas con `AbortController` al continuar tipeando para evitar respuestas desfasadas y cuelgues.
+  - Caché local en memoria (`Map`) para consultas recurrentes a 0ms.
+  - Priorización instantánea (0ms) de resultados locales indexados mientras Open Food Facts resuelve en segundo plano.
+- [x] **4. Estado Vacío Amigable (Empty State)**:
+  - Mostrar la leyenda oficial: *"No hay productos disponibles de acuerdo a tu búsqueda"*.
+  - Diseño Zenit limpio con icono ilustrativo, sugerencias de búsqueda y botón directo *"Dar de alta este producto"* (con degradado Zenit oficial) que autocompleta el nombre del alimento en la modal de creación.
+- [ ] **5. Carga Comunitaria y Arquitectura para Panel de Administración**:
+  - Flujo ágil para que los usuarios puedan registrar alimentos que no están en la base de datos.
+  - Estructuración de estados de producto en base de datos (`status: 'approved' | 'pending' | 'rejected'`, `submittedBy`).
+  - Preparación de la arquitectura de autenticación y roles (`role: 'admin'`) para futuro panel de administración donde el administrador pueda auditar, aceptar o rechazar solicitudes de incorporación a la base de datos oficial.
 
 ---
 

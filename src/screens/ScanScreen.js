@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Sparkles } from 'lucide-react-native';
 import { useSharedValue, withTiming, Easing } from 'react-native-reanimated';
@@ -18,6 +19,8 @@ import { CameraControlsOverlay } from '../components/scanner/CameraControlsOverl
 import { ScanProcessingOverlay } from '../components/scanner/ScanProcessingOverlay';
 import { ScanResultModal } from '../components/scanner/ScanResultModal';
 import { CoachChatModal } from '../components/scanner/CoachChatModal';
+import { BarcodeProductModal } from '../components/scanner/BarcodeProductModal';
+import { getProductByBarcode } from '../services/api/openFoodFactsService';
 
 export default function ScanScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -25,6 +28,11 @@ export default function ScanScreen({ navigation }) {
 
   // Tema claro (blanco) por defecto según configuración del usuario
   const isDark = false;
+
+  // Modo de escaneo: 'photo' (Gemini IA) vs 'barcode' (Código de barras)
+  const [scanMode, setScanMode] = useState('photo');
+  const [unregisteredBarcode, setUnregisteredBarcode] = useState(null);
+  const [isBarcodeModalVisible, setIsBarcodeModalVisible] = useState(false);
 
   // Estados de la máquina del escáner
   const [appState, setAppState] = useState('idle'); // 'idle' | 'capturing' | 'processing' | 'result'
@@ -42,6 +50,7 @@ export default function ScanScreen({ navigation }) {
 
   // Datos globales del usuario y macros desde Zustand
   const addConsumedFood = useUserStore((state) => state.addConsumedFood);
+  const addCustomProduct = useUserStore((state) => state.addCustomProduct);
   const targetMacros = useUserStore((state) => state.targetMacros);
   const consumedMacros = useUserStore((state) => state.consumedMacros);
   const userName = useUserStore((state) => state.name);
@@ -49,8 +58,12 @@ export default function ScanScreen({ navigation }) {
   const getRemainingScans = useUserStore((state) => state.getRemainingScans);
   const incrementDailyScans = useUserStore((state) => state.incrementDailyScans);
   const resetDailyScans = useUserStore((state) => state.resetDailyScans);
+  const getRemainingCoachInteractions = useUserStore((state) => state.getRemainingCoachInteractions);
+  const incrementCoachInteractions = useUserStore((state) => state.incrementCoachInteractions);
+  const resetDailyCoachInteractions = useUserStore((state) => state.resetDailyCoachInteractions);
 
   const remainingScans = getRemainingScans ? getRemainingScans(8) : 8;
+  const remainingCoachInteractions = getRemainingCoachInteractions ? getRemainingCoachInteractions(8) : 8;
 
   const appStateRef = useRef(appState);
   useEffect(() => {
@@ -69,6 +82,12 @@ export default function ScanScreen({ navigation }) {
 
   const isLeavingRef = useRef(false);
   const isTakingPictureRef = useRef(false);
+  const isProcessingBarcodeRef = useRef(false);
+
+  const isBarcodeModalVisibleRef = useRef(false);
+  useEffect(() => {
+    isBarcodeModalVisibleRef.current = isBarcodeModalVisible;
+  }, [isBarcodeModalVisible]);
 
   // Precalentar conexión DNS/TLS con Google Gemini apenas se monta la pantalla
   useEffect(() => {
@@ -114,9 +133,15 @@ export default function ScanScreen({ navigation }) {
     });
   };
 
+  const hasConsumedCoachForCurrentFoodRef = useRef(false);
+
   // Resetear por completo el estado del escáner
   const resetScanState = () => {
     isTakingPictureRef.current = false;
+    isProcessingBarcodeRef.current = false;
+    hasConsumedCoachForCurrentFoodRef.current = false;
+    setIsBarcodeModalVisible(false);
+    setUnregisteredBarcode(null);
     setPhoto(null);
     setEditableData(null);
     setSelectedPortionLabel(null);
@@ -127,6 +152,36 @@ export default function ScanScreen({ navigation }) {
     progress.value = 0;
     setAppState('idle');
     appStateRef.current = 'idle';
+  };
+
+  // Cada vez que la pantalla reciba el foco (al abrirla o volver de otra pestaña),
+  // se resetea por completo y vuelve al modo Foto IA por defecto.
+  useFocusEffect(
+    useCallback(() => {
+      resetScanState();
+      setScanMode('photo');
+    }, [])
+  );
+
+  // Abrir chat con el Coach controlando el límite de 8 interacciones diarias
+  const handleOpenCoachChat = () => {
+    if (remainingCoachInteractions <= 0 && !hasConsumedCoachForCurrentFoodRef.current) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showCustomAlert({
+        title: 'Límite de Coach alcanzado',
+        message: 'Ya utilizaste tus 8 consultas con el Coach hoy. Mañana a las 00:00 hs se renovará tu cupo para que sigas recibiendo asesoramiento nutricional.',
+        type: 'warning',
+        confirmText: 'Entendido',
+      });
+      return;
+    }
+
+    if (!hasConsumedCoachForCurrentFoodRef.current) {
+      incrementCoachInteractions();
+      hasConsumedCoachForCurrentFoodRef.current = true;
+    }
+
+    setShowCoachChat(true);
   };
 
   // Confirmar salida a la pantalla principal
@@ -148,6 +203,12 @@ export default function ScanScreen({ navigation }) {
 
   // Acción de retroceso inteligente
   const handleBackAction = () => {
+    if (isBarcodeModalVisibleRef.current) {
+      setIsBarcodeModalVisible(false);
+      setUnregisteredBarcode(null);
+      isProcessingBarcodeRef.current = false;
+      return;
+    }
     if (showCoachChatRef.current) {
       setShowCoachChat(false);
       return;
@@ -163,6 +224,12 @@ export default function ScanScreen({ navigation }) {
   // Interceptar botón físico y gestos de atrás en Android
   useEffect(() => {
     const onBackPress = () => {
+      if (isBarcodeModalVisibleRef.current) {
+        setIsBarcodeModalVisible(false);
+        setUnregisteredBarcode(null);
+        isProcessingBarcodeRef.current = false;
+        return true;
+      }
       if (showCoachChatRef.current) {
         setShowCoachChat(false);
         return true;
@@ -181,6 +248,101 @@ export default function ScanScreen({ navigation }) {
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
   }, []);
+
+  // Mapear producto de base de datos a formato de resultado Gemini para ScanResultModal
+  const mapProductToScanResult = (product) => {
+    const cals = Number(product.calories) || 0;
+    const prot = Number(product.protein) || 0;
+    const carbs = Number(product.carbs) || 0;
+    const fats = Number(product.fats) || 0;
+    const serving = product.servingSize || product.unitName || '1 porción (100g)';
+
+    const portionPresets = [
+      { label: 'Media porción (50%)', multiplier: 0.5 },
+      { label: `${serving} (100%)`, multiplier: 1 },
+      { label: 'Porción y media (150%)', multiplier: 1.5 },
+      { label: 'Doble porción (200%)', multiplier: 2 },
+    ];
+
+    const resultData = {
+      isFood: true,
+      mealName: product.name || 'Producto Escaneado',
+      totalCalories: cals,
+      totalProtein: prot,
+      totalCarbs: carbs,
+      totalFat: fats,
+      servingType: 'portion',
+      defaultServingLabel: `${serving} (100%)`,
+      portionPresets,
+      ingredients: [
+        {
+          name: product.name || 'Producto',
+          grams: product.unitGrams || 100,
+          calories: cals,
+          protein: prot,
+          carbs: carbs,
+          fat: fats,
+        },
+      ],
+    };
+
+    baseDataRef.current = { ...resultData };
+    selectedMultiplierRef.current = 1;
+    setSelectedPortionLabel(`${serving} (100%)`);
+    setEditableData(resultData);
+    setPhoto({
+      uri: product.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600',
+    });
+    setAppState('result');
+    appStateRef.current = 'result';
+    isProcessingBarcodeRef.current = false;
+  };
+
+  // Detección y procesamiento de código de barras
+  const handleBarcodeScanned = async ({ data }) => {
+    if (
+      isProcessingBarcodeRef.current ||
+      appStateRef.current !== 'idle' ||
+      isBarcodeModalVisibleRef.current
+    ) {
+      return;
+    }
+    if (!data || typeof data !== 'string') return;
+
+    isProcessingBarcodeRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const barcodeClean = data.trim();
+      const match = await getProductByBarcode(barcodeClean);
+
+      if (match) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        mapProductToScanResult(match);
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setUnregisteredBarcode(barcodeClean);
+        setIsBarcodeModalVisible(true);
+      }
+    } catch (err) {
+      console.error('Error al consultar código de barras:', err);
+      showCustomAlert({
+        title: 'Error de escaneo',
+        message: 'Ocurrió un error al buscar este producto. Por favor intentá nuevamente.',
+        type: 'danger',
+        confirmText: 'Reintentar',
+      });
+      isProcessingBarcodeRef.current = false;
+    }
+  };
+
+  // Guardar producto nuevo registrado desde el escáner
+  const handleSaveUnregisteredProduct = (newProduct) => {
+    addCustomProduct(newProduct);
+    setIsBarcodeModalVisible(false);
+    setUnregisteredBarcode(null);
+    mapProductToScanResult(newProduct);
+  };
 
   // Pipeline unificado de procesamiento para Cámara y Galería
   const processImageUri = async (uri) => {
@@ -429,7 +591,33 @@ export default function ScanScreen({ navigation }) {
   return (
     <View className="flex-1 bg-black">
       {/* Vista de Cámara Nativa */}
-      <CameraView style={StyleSheet.absoluteFill} facing={facing} flash={flash} mode="picture" ref={cameraRef} />
+      <CameraView
+        style={StyleSheet.absoluteFill}
+        facing={facing}
+        flash={flash}
+        mode="picture"
+        ref={cameraRef}
+        barcodeScannerSettings={
+          scanMode === 'barcode'
+            ? {
+                barcodeTypes: [
+                  'ean13',
+                  'ean8',
+                  'upc_a',
+                  'upc_e',
+                  'code128',
+                  'code39',
+                  'qr',
+                ],
+              }
+            : undefined
+        }
+        onBarcodeScanned={
+          scanMode === 'barcode' && !isBarcodeModalVisible && appState === 'idle'
+            ? handleBarcodeScanned
+            : undefined
+        }
+      />
 
       {/* 1. Vista HUD de la cámara (idle o capturing) */}
       {(appState === 'idle' || appState === 'capturing') && (
@@ -437,6 +625,11 @@ export default function ScanScreen({ navigation }) {
           remainingScans={remainingScans}
           flash={flash}
           isCapturing={appState === 'capturing' || isTakingPictureRef.current}
+          scanMode={scanMode}
+          onSelectScanMode={(mode) => {
+            setScanMode(mode);
+            isProcessingBarcodeRef.current = false;
+          }}
           onToggleFlash={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
           onBack={handleBackAction}
           onTakePicture={handleTakePicture}
@@ -444,9 +637,10 @@ export default function ScanScreen({ navigation }) {
           onToggleFacing={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
           onResetDailyScans={() => {
             resetDailyScans();
+            resetDailyCoachInteractions();
             showCustomAlert({
-              title: '¡Cupo reiniciado!',
-              message: 'Tu cupo diario de escaneos se reinició a 8/8 para que puedas continuar testeando.',
+              title: '¡Cupos reiniciados!',
+              message: 'Tus cupos diarios de escaneos IA (8/8) e interacciones con el Coach (8/8) se reiniciaron para testing.',
               type: 'success',
               confirmText: 'Genial',
             });
@@ -471,7 +665,7 @@ export default function ScanScreen({ navigation }) {
           setSelectedPortionLabel={setSelectedPortionLabel}
           isFavorite={isFavorite}
           setIsFavorite={setIsFavorite}
-          onOpenCoach={() => setShowCoachChat(true)}
+          onOpenCoach={handleOpenCoachChat}
           onDiscard={handleDiscard}
           onSave={handleSave}
           onBack={handleBackAction}
@@ -485,6 +679,7 @@ export default function ScanScreen({ navigation }) {
         visible={showCoachChat}
         isDark={isDark}
         editableData={editableData}
+        remainingCoachInteractions={remainingCoachInteractions}
         onClose={() => setShowCoachChat(false)}
         showAlert={showCustomAlert}
         userData={{
@@ -499,7 +694,22 @@ export default function ScanScreen({ navigation }) {
         }}
       />
 
-      {/* 5. Alertas y Modales del Sistema Zenit */}
+      {/* 5. Modal para producto con código de barras no registrado */}
+      <BarcodeProductModal
+        visible={isBarcodeModalVisible}
+        barcode={unregisteredBarcode}
+        onClose={() => {
+          setIsBarcodeModalVisible(false);
+          setUnregisteredBarcode(null);
+          setTimeout(() => {
+            isProcessingBarcodeRef.current = false;
+          }, 800);
+        }}
+        onSaveProduct={handleSaveUnregisteredProduct}
+        isDark={isDark}
+      />
+
+      {/* 6. Alertas y Modales del Sistema Zenit */}
       <ZenitModalAlert
         visible={dialogConfig.visible}
         title={dialogConfig.title}

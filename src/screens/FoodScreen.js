@@ -22,7 +22,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 import {
   Drumstick,
   Search,
-  ScanBarcode,
   Heart,
   Plus,
   Minus,
@@ -45,7 +44,7 @@ import { ZenitModalAlert } from '../components/ui/ZenitModalAlert';
 import {
   POPULAR_ARGENTINE_PRODUCTS,
   searchOpenFoodFacts,
-  getProductByBarcode,
+  findLocalMatches,
 } from '../services/api/openFoodFactsService';
 
 const { width } = Dimensions.get('window');
@@ -404,10 +403,6 @@ export default function FoodScreen({ navigation }) {
   const [recipeNameInput, setRecipeNameInput] = useState('');
   const [recipeServingsInput, setRecipeServingsInput] = useState(1);
 
-  // Modal Escáner de código de barras
-  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
-  const [barcodeInput, setBarcodeInput] = useState('');
-
   // Modal Crear nuevo producto personalizado
   const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false);
   const [newProdName, setNewProdName] = useState('');
@@ -427,28 +422,48 @@ export default function FoodScreen({ navigation }) {
     type: 'success',
   });
 
-  // Búsqueda en Open Food Facts con debounce
+  // Búsqueda inteligente de alto rendimiento en dos fases (0ms local + red cancelable)
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
       setSearchResults([...customProducts, ...POPULAR_ARGENTINE_PRODUCTS]);
       setIsSearching(false);
       return;
     }
 
+    // 1. Fase inmediata (0 ms): filtrar al instante el catálogo local y productos del usuario
+    const instantMatches = findLocalMatches(trimmed, customProducts);
+    setSearchResults(instantMatches);
     setIsSearching(true);
+
+    // 2. Fase de red con cancelación (AbortController) y debounce ágil de 280ms
+    const controller = new AbortController();
     const timeout = setTimeout(async () => {
-      const localCustomMatches = customProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.brand?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      try {
+        const offResults = await searchOpenFoodFacts(trimmed, controller.signal);
+        if (!controller.signal.aborted) {
+          const freshLocal = findLocalMatches(trimmed, customProducts);
+          const seen = new Set(
+            freshLocal.map((i) => `${(i.brand || '').toLowerCase()} ${(i.name || '').toLowerCase()}`)
+          );
+          const newRemote = offResults.filter(
+            (item) => !seen.has(`${(item.brand || '').toLowerCase()} ${(item.name || '').toLowerCase()}`)
+          );
+          setSearchResults([...freshLocal, ...newRemote]);
+        }
+      } catch (e) {
+        // Ignorar abort
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearching(false);
+        }
+      }
+    }, 280);
 
-      const offResults = await searchOpenFoodFacts(searchQuery);
-      setSearchResults([...localCustomMatches, ...offResults]);
-      setIsSearching(false);
-    }, 400);
-
-    return () => clearTimeout(timeout);
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
   }, [searchQuery, customProducts]);
 
   // Cálculos dinámicos del producto seleccionado (por unidad / lata O por gramos)
@@ -622,28 +637,6 @@ export default function FoodScreen({ navigation }) {
     setActiveTab('recipes');
   };
 
-  // Buscar por código de barras
-  const handleBarcodeSearch = async () => {
-    if (!barcodeInput.trim()) return;
-    setIsSearching(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    const match = await getProductByBarcode(barcodeInput.trim());
-    setIsSearching(false);
-    setIsBarcodeModalOpen(false);
-
-    if (match) {
-      handleOpenProductDetail(match);
-    } else {
-      setAlertConfig({
-        visible: true,
-        title: 'No encontrado',
-        message: 'No encontramos este código de barras. ¡Podés darlo de alta en 2 minutos!',
-        type: 'info',
-      });
-      setIsCreateProductModalOpen(true);
-    }
-  };
 
   // Guardar nuevo producto propio en Zenit DB
   const handleSaveCustomProduct = () => {
@@ -744,26 +737,6 @@ export default function FoodScreen({ navigation }) {
 
           {/* ACCIONES SUPERIORES */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setIsBarcodeModalOpen(true);
-              }}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 14,
-                backgroundColor: '#FFF7ED',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: '#FED7AA',
-              }}
-            >
-              <ScanBarcode size={18} color="#EA580C" />
-            </TouchableOpacity>
-
             <TouchableOpacity
               activeOpacity={0.88}
               onPress={() => {
@@ -971,109 +944,263 @@ export default function FoodScreen({ navigation }) {
                 ) : null}
               </View>
 
-              {/* CUADRÍCULA DE PRODUCTOS (SOLO FOTO Y NOMBRE, SIN MACROS) */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                }}
-              >
-                {searchResults.map((item) => {
-                  const isFav = favorites.some((f) => f.name.toLowerCase() === item.name.toLowerCase());
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      activeOpacity={0.88}
-                      onPress={() => handleOpenProductDetail(item)}
+              {/* CUADRÍCULA DE PRODUCTOS (SOLO FOTO Y NOMBRE, SIN MACROS) O ESTADO VACÍO */}
+              {isSearching && searchResults.length === 0 ? (
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 24,
+                    paddingVertical: 36,
+                    paddingHorizontal: 24,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: '#F1F5F9',
+                    shadowColor: '#0F172A',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.03,
+                    shadowRadius: 8,
+                    elevation: 1,
+                  }}
+                >
+                  <ActivityIndicator size="large" color="#EA580C" />
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: '800',
+                      color: '#0F172A',
+                      marginTop: 14,
+                      textAlign: 'center',
+                    }}
+                  >
+                    Buscando en la base de datos...
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '600',
+                      color: '#64748B',
+                      marginTop: 4,
+                      textAlign: 'center',
+                    }}
+                  >
+                    Consultando catálogo local y marcas argentinas
+                  </Text>
+                </View>
+              ) : searchResults.length === 0 && searchQuery.trim().length > 0 ? (
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 24,
+                    paddingVertical: 36,
+                    paddingHorizontal: 24,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: '#F1F5F9',
+                    shadowColor: '#0F172A',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 12,
+                    elevation: 2,
+                  }}
+                >
+                  {/* Icono de búsqueda en contenedor neutral */}
+                  <View
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
+                      backgroundColor: '#F8FAFC',
+                      borderWidth: 1,
+                      borderColor: '#E2E8F0',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Search size={28} color="#94A3B8" />
+                  </View>
+
+                  {/* Leyenda exacta requerida por el usuario */}
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '900',
+                      color: '#0F172A',
+                      textAlign: 'center',
+                      lineHeight: 22,
+                    }}
+                  >
+                    No hay productos disponibles de acuerdo a tu búsqueda
+                  </Text>
+
+                  {/* Subtexto aclaratorio */}
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: '#64748B',
+                      textAlign: 'center',
+                      marginTop: 8,
+                      lineHeight: 19,
+                      maxWidth: 300,
+                    }}
+                  >
+                    ¿No encontrás "{searchQuery.trim()}"? Podés darlo de alta manualmente con sus macros en 1 minuto.
+                  </Text>
+
+                  {/* Botón CTA con degradado Zenit oficial */}
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setNewProdName(searchQuery.trim());
+                      setIsCreateProductModalOpen(true);
+                    }}
+                    style={{
+                      marginTop: 22,
+                      width: '100%',
+                      borderRadius: 18,
+                      overflow: 'hidden',
+                      shadowColor: '#EA580C',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}
+                  >
+                    <LinearGradient
+                      colors={ZENIT_GRADIENT}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
                       style={{
-                        width: COLUMN_WIDTH,
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: 22,
-                        padding: 10,
-                        borderWidth: 1,
-                        borderColor: '#F1F5F9',
-                        shadowColor: '#0F172A',
-                        shadowOffset: { width: 0, height: 3 },
-                        shadowOpacity: 0.04,
-                        shadowRadius: 10,
-                        elevation: 2,
+                        paddingVertical: 14,
+                        paddingHorizontal: 20,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
                       }}
                     >
-                      {/* FOTO CON CORAZÓN SUTIL */}
-                      <View style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
-                        <ProductThumbnail
-                          uri={item.image}
-                          style={{
-                            width: '100%',
-                            height: 124,
-                            borderRadius: 16,
-                          }}
-                        />
-
-                        {/* ACCIÓN SUTIL CORAZÓN */}
-                        <TouchableOpacity
-                          activeOpacity={0.8}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            toggleFavorite(item);
-                          }}
-                          style={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-                            width: 32,
-                            height: 32,
-                            borderRadius: 16,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.1,
-                            shadowRadius: 3,
-                          }}
-                        >
-                          <Heart
-                            size={16}
-                            color={isFav ? '#E11D48' : '#64748B'}
-                            fill={isFav ? '#E11D48' : 'transparent'}
+                      <Plus size={18} color="#FFFFFF" strokeWidth={2.8} />
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: '800',
+                          color: '#FFFFFF',
+                          letterSpacing: 0.2,
+                        }}
+                      >
+                        Dar de alta este producto
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                  }}
+                >
+                  {searchResults.map((item) => {
+                    const isFav = favorites.some((f) => f.name.toLowerCase() === item.name.toLowerCase());
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        activeOpacity={0.88}
+                        onPress={() => handleOpenProductDetail(item)}
+                        style={{
+                          width: COLUMN_WIDTH,
+                          backgroundColor: '#FFFFFF',
+                          borderRadius: 22,
+                          padding: 10,
+                          borderWidth: 1,
+                          borderColor: '#F1F5F9',
+                          shadowColor: '#0F172A',
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: 0.04,
+                          shadowRadius: 10,
+                          elevation: 2,
+                        }}
+                      >
+                        {/* FOTO CON CORAZÓN SUTIL */}
+                        <View style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
+                          <ProductThumbnail
+                            uri={item.image}
+                            style={{
+                              width: '100%',
+                              height: 124,
+                              borderRadius: 16,
+                            }}
                           />
-                        </TouchableOpacity>
-                      </View>
 
-                      {/* INFORMACIÓN DEL PRODUCTO: SOLO MARCA Y NOMBRE */}
-                      <View style={{ marginTop: 10, paddingHorizontal: 2 }}>
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            fontWeight: '800',
-                            color: '#94A3B8',
-                            textTransform: 'uppercase',
-                            letterSpacing: 0.6,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {item.brand || 'Alimento'}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: '800',
-                            color: '#0F172A',
-                            marginTop: 2,
-                            lineHeight: 17,
-                          }}
-                          numberOfLines={2}
-                        >
-                          {item.name}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                          {/* ACCIÓN SUTIL CORAZÓN */}
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              toggleFavorite(item);
+                            }}
+                            style={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              shadowColor: '#000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.1,
+                              shadowRadius: 3,
+                            }}
+                          >
+                            <Heart
+                              size={16}
+                              color={isFav ? '#E11D48' : '#64748B'}
+                              fill={isFav ? '#E11D48' : 'transparent'}
+                            />
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* INFORMACIÓN DEL PRODUCTO: SOLO MARCA Y NOMBRE */}
+                        <View style={{ marginTop: 10, paddingHorizontal: 2 }}>
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: '800',
+                              color: '#94A3B8',
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.6,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {item.brand || 'Alimento'}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: '800',
+                              color: '#0F172A',
+                              marginTop: 2,
+                              lineHeight: 17,
+                            }}
+                            numberOfLines={2}
+                          >
+                            {item.name}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
 
@@ -1094,15 +1221,20 @@ export default function FoodScreen({ navigation }) {
                   activeOpacity={0.9}
                   onPress={() => setIsCartModalOpen(true)}
                   style={{
-                    backgroundColor: '#FFF7ED',
+                    backgroundColor: '#FFFFFF',
                     borderRadius: 22,
                     padding: 16,
                     borderWidth: 1.5,
-                    borderColor: '#FED7AA',
+                    borderColor: '#F1F5F9',
                     marginBottom: 16,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    shadowColor: '#0F172A',
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 10,
+                    elevation: 2,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -1111,24 +1243,24 @@ export default function FoodScreen({ navigation }) {
                         width: 44,
                         height: 44,
                         borderRadius: 14,
-                        backgroundColor: '#EA580C',
+                        backgroundColor: '#0F172A',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <ChefHat size={22} color="#FFFFFF" strokeWidth={2.2} />
+                      <ChefHat size={22} color="#F97316" strokeWidth={2.2} />
                     </View>
                     <View>
-                      <Text style={{ fontSize: 15, fontWeight: '900', color: '#9A3412' }}>
+                      <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A' }}>
                         Receta en curso ({recipeCart.length} productos)
                       </Text>
-                      <Text style={{ fontSize: 12, color: '#C2410C', fontWeight: '800', marginTop: 2 }}>
+                      <Text style={{ fontSize: 12, color: '#EA580C', fontWeight: '800', marginTop: 2 }}>
                         {cartTotals.calories} kcal • {cartTotals.protein}g proteína
                       </Text>
                     </View>
                   </View>
 
-                  <ChevronRight size={20} color="#EA580C" strokeWidth={2.5} />
+                  <ChevronRight size={20} color="#94A3B8" strokeWidth={2.5} />
                 </TouchableOpacity>
               )}
 
@@ -1638,135 +1770,151 @@ export default function FoodScreen({ navigation }) {
                   {/* CONTROLES SEGÚN MODO CON ALTURA ESTABLE (ZERO LAYOUT SHIFT) */}
                   <View style={{ minHeight: 96, justifyContent: 'center' }}>
                     {portionMode === 'unit' ? (
-                      <View
+                      <LinearGradient
+                        colors={ZENIT_GRADIENT}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
                         style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          backgroundColor: '#FFF7ED',
                           borderRadius: 18,
-                          paddingHorizontal: 16,
-                          paddingVertical: 14,
-                          borderWidth: 1,
-                          borderColor: '#FED7AA',
+                          padding: 1.5,
                         }}
                       >
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={{ fontSize: 13, fontWeight: '900', color: '#9A3412' }}>
-                            {selectedProduct?.unitName || selectedProduct?.servingSize || '1 unidad'}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: '#C2410C', fontWeight: '700', marginTop: 2 }}>
-                            Envase o unidad estándar
-                          </Text>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                          <TouchableOpacity
-                            onPress={() => {
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setUnitCount((prev) => Math.max(1, prev - 1));
-                            }}
-                            style={{
-                              backgroundColor: '#FFFFFF',
-                              width: 34,
-                              height: 34,
-                              borderRadius: 10,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderWidth: 1,
-                              borderColor: '#FED7AA',
-                            }}
-                          >
-                            <Minus size={15} color="#EA580C" strokeWidth={2.5} />
-                          </TouchableOpacity>
-
-                          <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A', minWidth: 32, textAlign: 'center' }}>
-                            {unitCount}
-                          </Text>
-
-                          <TouchableOpacity
-                            onPress={() => {
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setUnitCount((prev) => prev + 1);
-                            }}
-                            style={{
-                              backgroundColor: '#FFFFFF',
-                              width: 34,
-                              height: 34,
-                              borderRadius: 10,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderWidth: 1,
-                              borderColor: '#FED7AA',
-                            }}
-                          >
-                            <Plus size={15} color="#EA580C" strokeWidth={2.5} />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ) : (
-                      <View>
                         <View
                           style={{
                             flexDirection: 'row',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            backgroundColor: '#F8FAFC',
-                            borderRadius: 18,
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: 16.5,
                             paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderWidth: 1,
-                            borderColor: '#E2E8F0',
+                            paddingVertical: 12,
                           }}
                         >
-                          <Text style={{ fontSize: 13, fontWeight: '800', color: '#475569' }}>
-                            Cantidad en gramos:
-                          </Text>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '900', color: '#EA580C' }}>
+                              {selectedProduct?.unitName || selectedProduct?.servingSize || '1 unidad'}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: '#0F172A', fontWeight: '600', marginTop: 2 }}>
+                              Envase o unidad estándar
+                            </Text>
+                          </View>
 
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                             <TouchableOpacity
                               onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setProductGrams((prev) => Math.max(25, prev - 25));
+                                setUnitCount((prev) => Math.max(1, prev - 1));
                               }}
                               style={{
-                                backgroundColor: '#FFFFFF',
-                                width: 32,
-                                height: 32,
+                                backgroundColor: '#F8FAFC',
+                                width: 34,
+                                height: 34,
                                 borderRadius: 10,
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 borderWidth: 1,
-                                borderColor: '#E2E8F0',
+                                borderColor: '#F1F5F9',
                               }}
                             >
-                              <Minus size={15} color="#0F172A" />
+                              <Minus size={15} color="#0F172A" strokeWidth={2.5} />
                             </TouchableOpacity>
 
-                            <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A', minWidth: 46, textAlign: 'center' }}>
-                              {productGrams}g
+                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A', minWidth: 32, textAlign: 'center' }}>
+                              {unitCount}
                             </Text>
 
                             <TouchableOpacity
                               onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setProductGrams((prev) => prev + 25);
+                                setUnitCount((prev) => prev + 1);
                               }}
                               style={{
-                                backgroundColor: '#FFFFFF',
-                                width: 32,
-                                height: 32,
+                                backgroundColor: '#F8FAFC',
+                                width: 34,
+                                height: 34,
                                 borderRadius: 10,
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 borderWidth: 1,
-                                borderColor: '#E2E8F0',
+                                borderColor: '#F1F5F9',
                               }}
                             >
-                              <Plus size={15} color="#0F172A" />
+                              <Plus size={15} color="#0F172A" strokeWidth={2.5} />
                             </TouchableOpacity>
                           </View>
                         </View>
+                      </LinearGradient>
+                    ) : (
+                      <View>
+                        <LinearGradient
+                          colors={ZENIT_GRADIENT}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={{
+                            borderRadius: 18,
+                            padding: 1.5,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              backgroundColor: '#FFFFFF',
+                              borderRadius: 16.5,
+                              paddingHorizontal: 16,
+                              paddingVertical: 10,
+                            }}
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: '900', color: '#EA580C' }}>
+                              Cantidad en gramos:
+                            </Text>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  setProductGrams((prev) => Math.max(25, prev - 25));
+                                }}
+                                style={{
+                                  backgroundColor: '#F8FAFC',
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 10,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderWidth: 1,
+                                  borderColor: '#F1F5F9',
+                                }}
+                              >
+                                <Minus size={15} color="#0F172A" />
+                              </TouchableOpacity>
+
+                              <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A', minWidth: 46, textAlign: 'center' }}>
+                                {productGrams}g
+                              </Text>
+
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  setProductGrams((prev) => prev + 25);
+                                }}
+                                style={{
+                                  backgroundColor: '#F8FAFC',
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 10,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderWidth: 1,
+                                  borderColor: '#F1F5F9',
+                                }}
+                              >
+                                <Plus size={15} color="#0F172A" />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </LinearGradient>
 
                         {/* CHIPS RÁPIDOS */}
                         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, justifyContent: 'center' }}>
@@ -1805,55 +1953,63 @@ export default function FoodScreen({ navigation }) {
                 {/* MACROS ZENIT (4 CARDS LIMPIAS RESPETANDO PALETA OFICIAL)*/}
                 {/* ======================================================= */}
                 <View style={{ marginBottom: 18 }}>
-                  {/* HERO CARD CALORÍAS */}
-                  <View
+                  {/* HERO CARD CALORÍAS (ZenitHighlightCard: Borde en LinearGradient + Fondo Blanco Puro) */}
+                  <LinearGradient
+                    colors={ZENIT_GRADIENT}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: '#FFF7ED',
                       borderRadius: 18,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      borderWidth: 1,
-                      borderColor: '#FED7AA',
+                      padding: 1.5,
                       marginBottom: 10,
                     }}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View
-                        style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: 12,
-                          backgroundColor: '#FFFFFF',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderWidth: 1,
-                          borderColor: '#FED7AA',
-                        }}
-                      >
-                        <Flame size={20} color="#EA580C" />
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 16.5,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 12,
+                            backgroundColor: '#F8FAFC',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: 1,
+                            borderColor: '#F1F5F9',
+                          }}
+                        >
+                          <Flame size={20} color="#EA580C" />
+                        </View>
+                        <View>
+                          <Text style={{ fontSize: 13, fontWeight: '900', color: '#EA580C' }}>
+                            Calorías Totales
+                          </Text>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#0F172A', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 1 }}>
+                            {portionMode === 'unit' ? (selectedProduct?.unitName || '1 porción') : `${productGrams}g`}
+                          </Text>
+                        </View>
                       </View>
-                      <View>
-                        <Text style={{ fontSize: 13, fontWeight: '900', color: '#0F172A' }}>
-                          Calorías Totales
-                        </Text>
-                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#C2410C', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                          {portionMode === 'unit' ? (selectedProduct?.unitName || '1 porción') : `${productGrams}g`}
-                        </Text>
-                      </View>
-                    </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
-                      <Text style={{ fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -0.6 }}>
-                        {calculatedMacros.calories}
-                      </Text>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#EA580C' }}>
-                        kcal
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+                        <Text style={{ fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -0.6 }}>
+                          {calculatedMacros.calories}
+                        </Text>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
+                          kcal
+                        </Text>
+                      </View>
                     </View>
-                  </View>
+                  </LinearGradient>
 
                   {/* TRÍO DE MACROS: PROTEÍNAS, CARBS, GRASAS */}
                   <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -2319,91 +2475,7 @@ export default function FoodScreen({ navigation }) {
         </Modal>
 
         {/* ======================================================= */}
-        {/* MODAL 3: ESCANEAR POR CÓDIGO DE BARRAS                  */}
-        {/* ======================================================= */}
-        <Modal
-          visible={isBarcodeModalOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setIsBarcodeModalOpen(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(15, 23, 42, 0.65)',
-              justifyContent: 'center',
-              padding: 24,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: 26,
-                padding: 22,
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.08,
-                shadowRadius: 16,
-              }}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <ScanBarcode size={22} color="#EA580C" />
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#0F172A' }}>
-                    Código de Barras
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setIsBarcodeModalOpen(false)}
-                  style={{
-                    backgroundColor: '#F8FAFC',
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <X size={16} color="#94A3B8" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={{ fontSize: 12, color: '#64748B', marginTop: 8, fontWeight: '600' }}>
-                Ingresá el código EAN-13 del producto argentino para consultarlo en Open Food Facts:
-              </Text>
-
-              <TextInput
-                value={barcodeInput}
-                onChangeText={setBarcodeInput}
-                placeholder="Ej: 7790080026042"
-                keyboardType="numeric"
-                style={{
-                  backgroundColor: '#F8FAFC',
-                  borderRadius: 16,
-                  paddingHorizontal: 14,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  fontWeight: '800',
-                  color: '#0F172A',
-                  marginTop: 14,
-                  borderWidth: 1,
-                  borderColor: '#E2E8F0',
-                  textAlign: 'center',
-                  letterSpacing: 2,
-                }}
-              />
-
-              <ZenitPrimaryButton
-                title="Buscar en Open Food Facts"
-                onPress={handleBarcodeSearch}
-                style={{ marginTop: 16 }}
-              />
-            </View>
-          </View>
-        </Modal>
-
-        {/* ======================================================= */}
-        {/* MODAL 4: CREAR PRODUCTO PERSONALIZADO                   */}
+        {/* MODAL 3: CREAR PRODUCTO PERSONALIZADO                   */}
         {/* ======================================================= */}
         <Modal
           visible={isCreateProductModalOpen}
@@ -2547,14 +2619,14 @@ export default function FoodScreen({ navigation }) {
                         placeholder="250"
                         keyboardType="numeric"
                         style={{
-                          backgroundColor: '#FFF7ED',
+                          backgroundColor: '#F8FAFC',
                           borderRadius: 14,
                           padding: 12,
                           fontSize: 14,
                           fontWeight: '900',
                           color: '#0F172A',
                           borderWidth: 1,
-                          borderColor: '#FED7AA',
+                          borderColor: '#E2E8F0',
                           textAlign: 'center',
                         }}
                       />

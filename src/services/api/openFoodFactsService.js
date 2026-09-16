@@ -1,390 +1,9 @@
 // Servicio Open Food Facts para Argentina con Fallback y Catálogo Local
 // Open Food Facts API v2 (Gratuita y Open Source - Licencia ODbL)
+import { useUserStore } from '../../store/useUserStore';
+import { POPULAR_ARGENTINE_PRODUCTS } from '../../data/argentineProducts';
 
-export const POPULAR_ARGENTINE_PRODUCTS = [
-  {
-    id: 'off-arg-monster',
-    name: 'Monster Energy Original',
-    brand: 'Monster Energy',
-    barcode: '5060335632302',
-    servingSize: '473ml (1 lata)',
-    unitName: '1 lata (473ml)',
-    unitGrams: 473,
-    defaultPortionType: 'unit',
-    // Macros por 100ml
-    calories: 48,
-    protein: 0.0,
-    carbs: 12.0,
-    fats: 0.0,
-    // Macros por 1 lata completa (473ml)
-    unitCalories: 227,
-    unitProtein: 0.0,
-    unitCarbs: 56.8,
-    unitFats: 0.0,
-    image: 'https://images.openfoodfacts.org/images/products/506/033/563/2302/front_en.103.400.jpg',
-    category: 'Bebidas Energéticas',
-  },
-  {
-    id: 'off-arg-monster-ultra-white',
-    name: 'Monster Energy Zero Ultra (Blanca)',
-    brand: 'Monster Energy',
-    barcode: '5060337501316',
-    servingSize: '473ml (1 lata)',
-    unitName: '1 lata (473ml)',
-    unitGrams: 473,
-    defaultPortionType: 'unit',
-    calories: 3,
-    protein: 0.0,
-    carbs: 0.8,
-    fats: 0.0,
-    unitCalories: 14,
-    unitProtein: 0.0,
-    unitCarbs: 3.8,
-    unitFats: 0.0,
-    image: 'https://images.openfoodfacts.org/images/products/506/033/750/1316/front_es.145.400.jpg',
-    category: 'Bebidas Energéticas',
-  },
-  {
-    id: 'off-arg-monster-mango-loco',
-    name: 'Monster Energy Mango Loco',
-    brand: 'Monster Energy',
-    barcode: '5060639121915',
-    servingSize: '473ml (1 lata)',
-    unitName: '1 lata (473ml)',
-    unitGrams: 473,
-    defaultPortionType: 'unit',
-    calories: 47,
-    protein: 0.0,
-    carbs: 11.6,
-    fats: 0.0,
-    unitCalories: 222,
-    unitProtein: 0.0,
-    unitCarbs: 54.8,
-    unitFats: 0.0,
-    image: 'https://images.openfoodfacts.org/images/products/506/063/912/1915/front_es.23.400.jpg',
-    category: 'Bebidas Energéticas',
-  },
-  {
-    id: 'off-arg-monster-pipeline-punch',
-    name: 'Monster Energy Pipeline Punch',
-    brand: 'Monster Energy',
-    barcode: '5060517885526',
-    servingSize: '473ml (1 lata)',
-    unitName: '1 lata (473ml)',
-    unitGrams: 473,
-    defaultPortionType: 'unit',
-    calories: 45,
-    protein: 0.0,
-    carbs: 11.0,
-    fats: 0.0,
-    unitCalories: 213,
-    unitProtein: 0.0,
-    unitCarbs: 52.0,
-    unitFats: 0.0,
-    image: 'https://images.openfoodfacts.org/images/products/506/051/788/5526/front_fr.27.400.jpg',
-    category: 'Bebidas Energéticas',
-  },
-  {
-    id: 'off-arg-monster-ultra-paradise',
-    name: 'Monster Energy Ultra Paradise',
-    brand: 'Monster Energy',
-    barcode: '5060639127139',
-    servingSize: '473ml (1 lata)',
-    unitName: '1 lata (473ml)',
-    unitGrams: 473,
-    defaultPortionType: 'unit',
-    calories: 3,
-    protein: 0.0,
-    carbs: 0.8,
-    fats: 0.0,
-    unitCalories: 14,
-    unitProtein: 0.0,
-    unitCarbs: 3.8,
-    unitFats: 0.0,
-    image: 'https://images.openfoodfacts.org/images/products/506/063/912/7139/front_en.62.400.jpg',
-    category: 'Bebidas Energéticas',
-  },
-  {
-    id: 'off-arg-monster-ultra-watermelon',
-    name: 'Monster Energy Ultra Watermelon',
-    brand: 'Monster Energy',
-    barcode: '5060896621326',
-    servingSize: '473ml (1 lata)',
-    unitName: '1 lata (473ml)',
-    unitGrams: 473,
-    defaultPortionType: 'unit',
-    calories: 3,
-    protein: 0.0,
-    carbs: 0.8,
-    fats: 0.0,
-    unitCalories: 14,
-    unitProtein: 0.0,
-    unitCarbs: 3.8,
-    unitFats: 0.0,
-    image: 'https://images.openfoodfacts.org/images/products/506/089/662/1326/front_fr.16.400.jpg',
-    category: 'Bebidas Energéticas',
-  },
-  {
-    id: 'off-arg-alfajor',
-    name: 'Alfajor Chocolate',
-    brand: 'Havanna',
-    barcode: '7791875005353',
-    servingSize: '55g (1 unidad)',
-    unitName: '1 alfajor (55g)',
-    unitGrams: 55,
-    defaultPortionType: 'unit',
-    calories: 382,
-    protein: 6.5,
-    carbs: 54.5,
-    fats: 14.5,
-    unitCalories: 210,
-    unitProtein: 3.6,
-    unitCarbs: 30.0,
-    unitFats: 8.0,
-    image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=400&q=80',
-    category: 'Dulces y Snacks',
-  },
-  {
-    id: 'off-arg-1',
-    name: 'Yogur Firme Vainilla',
-    brand: 'La Serenísima',
-    barcode: '7790080026042',
-    servingSize: '120g (1 pote)',
-    unitName: '1 pote (120g)',
-    unitGrams: 120,
-    defaultPortionType: 'unit',
-    calories: 95,
-    protein: 3.5,
-    carbs: 13.3,
-    fats: 3.0,
-    unitCalories: 114,
-    unitProtein: 4.2,
-    unitCarbs: 16.0,
-    unitFats: 3.6,
-    image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=400&q=80',
-    category: 'Lácteos',
-  },
-  {
-    id: 'off-arg-2',
-    name: 'Pechuga de Pollo Fresca',
-    brand: 'Granja Tres Arroyos',
-    barcode: '7798031234567',
-    servingSize: '150g (1 filete)',
-    unitName: '1 filete (150g)',
-    unitGrams: 150,
-    defaultPortionType: 'grams',
-    calories: 165,
-    protein: 34.5,
-    carbs: 0.0,
-    fats: 2.7,
-    unitCalories: 248,
-    unitProtein: 51.8,
-    unitCarbs: 0.0,
-    unitFats: 4.1,
-    image: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=400&q=80',
-    category: 'Carnes',
-  },
-  {
-    id: 'off-arg-3',
-    name: 'Fideos Spaghetti',
-    brand: 'Lucchetti',
-    barcode: '7790070312018',
-    servingSize: '80g (1 plato seco)',
-    unitName: '1 plato (80g)',
-    unitGrams: 80,
-    defaultPortionType: 'grams',
-    calories: 350,
-    protein: 12.0,
-    carbs: 71.3,
-    fats: 1.5,
-    unitCalories: 280,
-    unitProtein: 9.6,
-    unitCarbs: 57.0,
-    unitFats: 1.2,
-    image: 'https://images.unsplash.com/photo-1551462147-ff29053bfc14?auto=format&fit=crop&w=400&q=80',
-    category: 'Pastas y Granos',
-  },
-  {
-    id: 'off-arg-4',
-    name: 'Avena Instantánea',
-    brand: 'Quaker',
-    barcode: '7790310984512',
-    servingSize: '40g (4 cdas)',
-    unitName: '1 porción (40g)',
-    unitGrams: 40,
-    defaultPortionType: 'grams',
-    calories: 390,
-    protein: 14.0,
-    carbs: 67.0,
-    fats: 7.0,
-    unitCalories: 156,
-    unitProtein: 5.6,
-    unitCarbs: 26.8,
-    unitFats: 2.8,
-    image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&w=400&q=80',
-    category: 'Cereales',
-  },
-  {
-    id: 'off-arg-5',
-    name: 'Atún al Natural en Lomitos',
-    brand: 'La Campagnola',
-    barcode: '7790035001254',
-    servingSize: '120g (1 lata escurrida)',
-    unitName: '1 lata (120g)',
-    unitGrams: 120,
-    defaultPortionType: 'unit',
-    calories: 100,
-    protein: 22.0,
-    carbs: 0.0,
-    fats: 1.0,
-    unitCalories: 120,
-    unitProtein: 26.4,
-    unitCarbs: 0.0,
-    unitFats: 1.2,
-    image: 'https://images.unsplash.com/photo-1501595091296-3aa970afb3ff?auto=format&fit=crop&w=400&q=80',
-    category: 'Pescados',
-  },
-  {
-    id: 'off-arg-6',
-    name: 'Queso Cremón Cremoso',
-    brand: 'La Serenísima',
-    barcode: '7790080034023',
-    servingSize: '30g (1 rebanada)',
-    unitName: '1 rebanada (30g)',
-    unitGrams: 30,
-    defaultPortionType: 'unit',
-    calories: 293,
-    protein: 21.0,
-    carbs: 2.0,
-    fats: 22.7,
-    unitCalories: 88,
-    unitProtein: 6.3,
-    unitCarbs: 0.6,
-    unitFats: 6.8,
-    image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=400&q=80',
-    category: 'Lácteos',
-  },
-  {
-    id: 'off-arg-7',
-    name: 'Arroz Largo Fino',
-    brand: 'Gallo Oro',
-    barcode: '7790070112458',
-    servingSize: '50g (1 taza crudo)',
-    unitName: '1 porción (50g)',
-    unitGrams: 50,
-    defaultPortionType: 'grams',
-    calories: 350,
-    protein: 7.0,
-    carbs: 77.0,
-    fats: 0.8,
-    unitCalories: 175,
-    unitProtein: 3.5,
-    unitCarbs: 38.5,
-    unitFats: 0.4,
-    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80',
-    category: 'Pastas y Granos',
-  },
-  {
-    id: 'off-arg-8',
-    name: 'Huevos de Campo Grandes',
-    brand: 'Granja Argentina',
-    barcode: '7791234567890',
-    servingSize: '50g (1 huevo)',
-    unitName: '1 huevo (50g)',
-    unitGrams: 50,
-    defaultPortionType: 'unit',
-    calories: 143,
-    protein: 12.6,
-    carbs: 0.8,
-    fats: 9.5,
-    unitCalories: 72,
-    unitProtein: 6.3,
-    unitCarbs: 0.4,
-    unitFats: 4.8,
-    image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=400&q=80',
-    category: 'Huevos',
-  },
-  {
-    id: 'off-arg-9',
-    name: 'Leche Descremada 0%',
-    brand: 'La Serenísima Clásica',
-    barcode: '7790080011024',
-    servingSize: '200ml (1 vaso)',
-    unitName: '1 vaso (200ml)',
-    unitGrams: 200,
-    defaultPortionType: 'unit',
-    calories: 34,
-    protein: 3.1,
-    carbs: 4.9,
-    fats: 0.0,
-    unitCalories: 68,
-    unitProtein: 6.2,
-    unitCarbs: 9.8,
-    unitFats: 0.0,
-    image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=80',
-    category: 'Lácteos',
-  },
-  {
-    id: 'off-arg-10',
-    name: 'Galletitas de Salvado',
-    brand: 'Granix',
-    barcode: '7790580123456',
-    servingSize: '30g (3 galletitas)',
-    unitName: '3 galletitas (30g)',
-    unitGrams: 30,
-    defaultPortionType: 'unit',
-    calories: 420,
-    protein: 11.0,
-    carbs: 65.0,
-    fats: 12.7,
-    unitCalories: 126,
-    unitProtein: 3.3,
-    unitCarbs: 19.5,
-    unitFats: 3.8,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80',
-    category: 'Snacks',
-  },
-  {
-    id: 'off-arg-11',
-    name: 'Banana Fresca',
-    brand: 'Ecuador Premium',
-    barcode: '7790001002003',
-    servingSize: '120g (1 mediana)',
-    unitName: '1 banana (120g)',
-    unitGrams: 120,
-    defaultPortionType: 'unit',
-    calories: 88,
-    protein: 1.1,
-    carbs: 22.5,
-    fats: 0.2,
-    unitCalories: 105,
-    unitProtein: 1.3,
-    unitCarbs: 27.0,
-    unitFats: 0.3,
-    image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=400&q=80',
-    category: 'Frutas',
-  },
-  {
-    id: 'off-arg-12',
-    name: 'Dulce de Leche Colonial',
-    brand: 'La Serenísima',
-    barcode: '7790080045012',
-    servingSize: '20g (1 cucharada)',
-    unitName: '1 cucharada (20g)',
-    unitGrams: 20,
-    defaultPortionType: 'unit',
-    calories: 310,
-    protein: 6.0,
-    carbs: 55.0,
-    fats: 7.0,
-    unitCalories: 62,
-    unitProtein: 1.2,
-    unitCarbs: 11.0,
-    unitFats: 1.4,
-    image: 'https://images.unsplash.com/photo-1559598467-f8b76c8155d0?auto=format&fit=crop&w=400&q=80',
-    category: 'Dulces',
-  },
-];
+export { POPULAR_ARGENTINE_PRODUCTS };
 
 /**
  * Parser inteligente de porciones/unidades para productos
@@ -489,6 +108,61 @@ export function toHighResImage(url) {
 }
 
 /**
+ * Normaliza cadenas de búsqueda eliminando diacríticos, mayúsculas y caracteres especiales
+ */
+export function normalizeSearchText(text) {
+  if (!text || typeof text !== 'string') return '';
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Quita tildes / diacríticos
+    .replace(/[^a-z0-9\s]/gi, ' ') // Quita puntuación
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const STOP_WORDS = new Set([
+  'el', 'la', 'los', 'las', 'de', 'del', 'y', 'e', 'en', 'con', 'sin', 'un', 'una', 'unos', 'unas', 'para', 'por'
+]);
+
+/**
+ * Obtiene los tokens significativos de una búsqueda eliminando artículos
+ */
+export function getQueryTokens(query) {
+  const normalized = normalizeSearchText(query);
+  if (!normalized) return [];
+  const tokens = normalized.split(' ').filter((t) => t.length > 0);
+  const filtered = tokens.filter((t) => !STOP_WORDS.has(t));
+  return filtered.length > 0 ? filtered : tokens;
+}
+
+/**
+ * Evalúa si un producto coincide con los tokens de búsqueda (en nombre, marca o categoría)
+ */
+export function matchesQueryTokens(item, queryTokens) {
+  if (!queryTokens || queryTokens.length === 0) return true;
+  const target = normalizeSearchText(`${item.name || ''} ${item.brand || ''} ${item.category || ''}`);
+  return queryTokens.every((token) => target.includes(token));
+}
+
+/**
+ * Búsqueda instantánea en memoria (0 ms) para catálogo local y productos personalizados
+ */
+export function findLocalMatches(query, customProducts = []) {
+  const tokens = getQueryTokens(query);
+  if (tokens.length === 0) {
+    return [...customProducts, ...POPULAR_ARGENTINE_PRODUCTS];
+  }
+
+  const allLocal = [...customProducts, ...POPULAR_ARGENTINE_PRODUCTS];
+  return allLocal.filter((item) => matchesQueryTokens(item, tokens));
+}
+
+// Caché en memoria para acelerar búsquedas repetidas
+const SEARCH_CACHE = new Map();
+const MAX_CACHE_SIZE = 60;
+
+/**
  * Normaliza nombres para deduplicar productos redundantes (ej: 15 variantes idénticas de Monster)
  */
 export function normalizeFoodKey(brand, name) {
@@ -504,19 +178,20 @@ export function normalizeFoodKey(brand, name) {
 /**
  * Busca productos por nombre en Open Food Facts con deduplicación y prioridad de catálogo local curado
  */
-export async function searchOpenFoodFacts(query) {
+export async function searchOpenFoodFacts(query, externalSignal) {
   const cleanQuery = query?.trim()?.toLowerCase() || '';
   if (!cleanQuery) return POPULAR_ARGENTINE_PRODUCTS;
 
-  // 1. Filtrar primero coincidencias en nuestro catálogo curado argentino
-  const localMatches = POPULAR_ARGENTINE_PRODUCTS.filter(
-    (item) =>
-      item.name.toLowerCase().includes(cleanQuery) ||
-      item.brand.toLowerCase().includes(cleanQuery) ||
-      item.category.toLowerCase().includes(cleanQuery)
-  );
+  const tokens = getQueryTokens(cleanQuery);
+  const localMatches = POPULAR_ARGENTINE_PRODUCTS.filter((item) => matchesQueryTokens(item, tokens));
 
-  // Registro para deduplicación: Evita mostrar 80 latas repetidas de Monster oHavanna
+  // Verificar caché en memoria para respuesta en 0ms
+  const cacheKey = normalizeSearchText(cleanQuery);
+  if (SEARCH_CACHE.has(cacheKey)) {
+    return SEARCH_CACHE.get(cacheKey);
+  }
+
+  // Registro para deduplicación: Evita mostrar 80 latas repetidas de Monster o Havanna
   const seenKeys = new Set();
   const seenBarcodes = new Set();
 
@@ -527,85 +202,112 @@ export async function searchOpenFoodFacts(query) {
 
   const offResults = [];
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4500);
+  // Intentamos consultar primero el nodo de Argentina (ar.openfoodfacts.org) y luego el nodo global (world.openfoodfacts.org)
+  const candidateUrls = [
+    `https://ar.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(cleanQuery)}&search_simple=1&action=process&json=1&page_size=24`,
+    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(cleanQuery)}&search_simple=1&action=process&json=1&page_size=24`,
+  ];
 
-    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
-      cleanQuery
-    )}&search_simple=1&action=process&json=1&page_size=24&country=argentina`;
+  for (const url of candidateUrls) {
+    if (externalSignal?.aborted) break;
 
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'ZenitApp - React Native - Version 1.0',
-      },
-    });
-    clearTimeout(timeoutId);
+    try {
+      const fetchOptions = {
+        headers: {
+          'User-Agent': 'ZenitApp - Android - Version 1.0 (contact@zenitapp.com)',
+          'Accept': 'application/json',
+        },
+      };
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.products && Array.isArray(data.products)) {
-        for (const p of data.products) {
-          const rawName = p.product_name_es || p.product_name;
-          if (!rawName || rawName.trim().length < 2) continue;
+      if (externalSignal) {
+        fetchOptions.signal = externalSignal;
+      }
 
-          const rawBrand = p.brands || 'Marca nacional';
-          const foodKey = normalizeFoodKey(rawBrand, rawName);
+      const response = await fetch(url, fetchOptions);
 
-          // Si ya tenemos esta variante (en catálogo curado o en resultados anteriores), la descartamos
-          if (seenKeys.has(foodKey)) continue;
-          if (p.code && seenBarcodes.has(p.code)) continue;
+      // Validar que la respuesta sea exitosa y en formato JSON (para evitar HTML en errores 503)
+      const contentType = response.headers?.get('content-type') || '';
+      if (response.ok && contentType.includes('json')) {
+        const data = await response.json();
+        if (data?.products && Array.isArray(data.products) && data.products.length > 0) {
+          for (const p of data.products) {
+            const rawName = p.product_name_es || p.product_name;
+            if (!rawName || rawName.trim().length < 2) continue;
 
-          seenKeys.add(foodKey);
-          if (p.code) seenBarcodes.add(p.code);
+            const rawBrand = p.brands || 'Marca nacional';
+            const foodKey = normalizeFoodKey(rawBrand, rawName);
 
-          const nutriments = p.nutriments || {};
-          const kcal = Math.round(Number(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0));
-          const prot = Number((nutriments.proteins_100g || nutriments.proteins || 0).toFixed(1));
-          const carbs = Number((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0).toFixed(1));
-          const fat = Number((nutriments.fat_100g || nutriments.fat || 0).toFixed(1));
+            // Si ya tenemos esta variante (en catálogo curado o en resultados anteriores), la descartamos
+            if (seenKeys.has(foodKey)) continue;
+            if (p.code && seenBarcodes.has(p.code)) continue;
 
-          const servingData = parseServingInfo(p, kcal, prot, carbs, fat);
+            seenKeys.add(foodKey);
+            if (p.code) seenBarcodes.add(p.code);
 
-          const hdImage = toHighResImage(
-            p.selected_images?.front?.display?.es ||
-            p.selected_images?.front?.display?.en ||
-            p.image_front_url ||
-            p.image_front_small_url ||
-            p.image_url ||
-            null
-          );
+            const nutriments = p.nutriments || {};
+            const kcal = Math.round(Number(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0));
+            const prot = Number((nutriments.proteins_100g || nutriments.proteins || 0).toFixed(1));
+            const carbs = Number((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0).toFixed(1));
+            const fat = Number((nutriments.fat_100g || nutriments.fat || 0).toFixed(1));
 
-          offResults.push({
-            id: p.code || `off-${Math.random()}`,
-            name: rawName.trim(),
-            brand: rawBrand.trim(),
-            barcode: p.code || '',
-            servingSize: servingData.servingSizeStr,
-            unitName: servingData.unitName,
-            unitGrams: servingData.unitGrams,
-            defaultPortionType: servingData.defaultPortionType,
-            calories: kcal,
-            protein: prot,
-            carbs: carbs,
-            fats: fat,
-            unitCalories: servingData.unitCalories,
-            unitProtein: servingData.unitProtein,
-            unitCarbs: servingData.unitCarbs,
-            unitFats: servingData.unitFats,
-            image: hdImage,
-            category: p.categories?.split(',')?.[0] || 'Alimento',
-            source: 'open_food_facts',
-          });
+            const servingData = parseServingInfo(p, kcal, prot, carbs, fat);
+
+            const hdImage = toHighResImage(
+              p.selected_images?.front?.display?.es ||
+              p.selected_images?.front?.display?.en ||
+              p.image_front_url ||
+              p.image_front_small_url ||
+              p.image_url ||
+              null
+            );
+
+            offResults.push({
+              id: p.code || `off-${Math.random()}`,
+              name: rawName.trim(),
+              brand: rawBrand.trim(),
+              barcode: p.code || '',
+              servingSize: servingData.servingSizeStr,
+              unitName: servingData.unitName,
+              unitGrams: servingData.unitGrams,
+              defaultPortionType: servingData.defaultPortionType,
+              calories: kcal,
+              protein: prot,
+              carbs: carbs,
+              fats: fat,
+              unitCalories: servingData.unitCalories,
+              unitProtein: servingData.unitProtein,
+              unitCarbs: servingData.unitCarbs,
+              unitFats: servingData.unitFats,
+              image: hdImage,
+              category: p.categories?.split(',')?.[0] || 'Alimento',
+              source: 'open_food_facts',
+            });
+          }
+
+          // Si obtuvimos resultados del primer nodo, no necesitamos consultar el siguiente
+          if (offResults.length > 0) {
+            break;
+          }
         }
       }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return localMatches;
+      }
+      // Si falla un nodo (503/timeout), el bucle continúa con el siguiente candidato
     }
-  } catch (error) {
-    console.log('[OpenFoodFacts] Offline o timeout en búsqueda.');
   }
 
-  return [...localMatches, ...offResults];
+  const combined = [...localMatches, ...offResults];
+  if (combined.length > 0) {
+    if (SEARCH_CACHE.size >= MAX_CACHE_SIZE) {
+      const firstKey = SEARCH_CACHE.keys().next().value;
+      SEARCH_CACHE.delete(firstKey);
+    }
+    SEARCH_CACHE.set(cacheKey, combined);
+  }
+
+  return combined;
 }
 
 /**
@@ -614,7 +316,16 @@ export async function searchOpenFoodFacts(query) {
 export async function getProductByBarcode(barcode) {
   if (!barcode) return null;
 
-  // 1. Revisar primero en catálogo local
+  // 1. Revisar primero en productos creados por el usuario
+  try {
+    const customProducts = useUserStore.getState().customProducts || [];
+    const customMatch = customProducts.find((p) => p.barcode === barcode);
+    if (customMatch) return customMatch;
+  } catch (e) {
+    // Si useUserStore aún no está listo o en contexto aislado
+  }
+
+  // 2. Revisar en catálogo local argentino
   const localMatch = POPULAR_ARGENTINE_PRODUCTS.find((p) => p.barcode === barcode);
   if (localMatch) return localMatch;
 
@@ -676,4 +387,3 @@ export async function getProductByBarcode(barcode) {
 
   return null;
 }
-

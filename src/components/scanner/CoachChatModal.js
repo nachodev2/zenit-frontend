@@ -343,6 +343,7 @@ export function CoachChatModal({
   onClose,
   userData,
   showAlert,
+  remainingCoachInteractions = 8,
 }) {
   const inputRef = useRef(null);
   const textRef = useRef('');
@@ -352,7 +353,7 @@ export function CoachChatModal({
   const [isTyping, setIsTyping] = useState(true);
   const [coachMessages, setCoachMessages] = useState([]);
 
-  // Límite de 4 mensajes al coach por comida
+  // Límite de 4 mensajes al coach por interacción
   const MAX_COACH_MESSAGES = 4;
   const [remainingConsultations, setRemainingConsultations] = useState(MAX_COACH_MESSAGES);
 
@@ -409,6 +410,7 @@ export function CoachChatModal({
 
   useEffect(() => {
     if (!visible) return;
+    setRemainingConsultations(MAX_COACH_MESSAGES);
     const fetchInitialAnalysis = async () => {
       try {
         const aiData = await generateInitialCoachWidgets(editableData, userData);
@@ -639,35 +641,57 @@ export function CoachChatModal({
               <Sparkles size={18} color="#F97316" />
               <Text style={s.headerText}>Zenit Coach</Text>
             </View>
-            {/* Contador de consultas restantes */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor:
-                  remainingConsultations > 0
-                    ? isDark
-                      ? 'rgba(249, 115, 22, 0.15)'
-                      : '#FFF7ED'
-                    : isDark
-                      ? 'rgba(239, 68, 68, 0.15)'
-                      : '#FEF2F2',
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: remainingConsultations > 0 ? '#F97316' : '#EF4444',
-              }}
-            >
-              <Text
+            {/* Contadores de consultas e interacciones */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {/* Interacciones diarias restantes con el Coach */}
+              <View
                 style={{
-                  color: remainingConsultations > 0 ? '#F97316' : '#EF4444',
-                  fontSize: 11,
-                  fontWeight: '800',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFFFFF',
+                  paddingHorizontal: 9,
+                  paddingVertical: 4,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: '#EA580C',
+                  gap: 4,
                 }}
               >
-                {remainingConsultations}/4
-              </Text>
+                <Sparkles size={11} color="#EA580C" />
+                <Text
+                  style={{
+                    color: '#EA580C',
+                    fontSize: 11,
+                    fontWeight: '800',
+                  }}
+                >
+                  {remainingCoachInteractions}/8 hoy
+                </Text>
+              </View>
+
+              {/* Mensajes restantes en esta interacción */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: isDark ? '#111111' : '#FFFFFF',
+                  paddingHorizontal: 9,
+                  paddingVertical: 4,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: remainingConsultations > 0 ? (isDark ? '#374151' : '#E2E8F0') : '#EF4444',
+                }}
+              >
+                <Text
+                  style={{
+                    color: remainingConsultations > 0 ? (isDark ? '#D1D5DB' : '#475569') : '#EF4444',
+                    fontSize: 11,
+                    fontWeight: '700',
+                  }}
+                >
+                  {remainingConsultations}/4 msgs
+                </Text>
+              </View>
             </View>
           </View>
 
