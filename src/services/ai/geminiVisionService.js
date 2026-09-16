@@ -150,11 +150,19 @@ export const prewarmVisionService = () => {
   } catch (e) {}
 };
 
-export const analyzeFoodImage = async (base64Image) => {
+export const analyzeFoodImage = async (base64Image, contextHints = null) => {
   return retryAsync(async () => {
     const model = getVisionModel();
     const imagePart = { inlineData: { data: base64Image, mimeType: 'image/jpeg' } };
-    const prompt = 'Analizá este alimento y devolvé el JSON nutricional estricto.';
+    let prompt = 'Analizá este alimento y devolvé el JSON nutricional estricto.';
+    if (contextHints) {
+      prompt += `\n\nCONTEXTO CRÍTICO Y DETALLADO PROVISTO POR EL USUARIO:
+- Plato / alimento descrito: ${contextHints.mealDescription || contextHints.foodType || 'No especificado'}
+- Preparación, cocción y agregados: ${contextHints.preparationAndExtras || contextHints.cookingMethod || contextHints.extras || 'No especificado'}
+- Tamaño / Porción indicada: ${contextHints.portionDescription || 'No especificado'}
+- Notas o detalles extra: ${contextHints.notes || 'Ninguna'}
+Por favor utilizá esta información exacta para calcular los macronutrientes y calorías con la máxima precisión posible en base a lo que el usuario declaró.`;
+    }
     const result = await model.generateContent([prompt, imagePart]);
     const rawText = result.response.text();
     const parsed = safeParseJson(rawText);

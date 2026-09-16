@@ -21,6 +21,9 @@ import GymScreen from './src/screens/GymScreen';
 import ConfigScreen from './src/screens/ConfigScreen';
 import ExerciseDetailScreen from './src/screens/ExerciseDetailScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen'; 
+import GuidedScanScreen from './src/screens/GuidedScanScreen';
+import WaterTrackerScreen from './src/screens/WaterTrackerScreen';
+import WeightTrackerScreen from './src/screens/WeightTrackerScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -137,6 +140,9 @@ export default function App() {
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
+            <Stack.Screen name="GuidedScan" component={GuidedScanScreen} />
+            <Stack.Screen name="WaterTracker" component={WaterTrackerScreen} />
+            <Stack.Screen name="WeightTracker" component={WeightTrackerScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

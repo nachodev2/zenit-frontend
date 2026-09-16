@@ -8,10 +8,16 @@ import { WeekCalendar } from '../components/home/WeekCalendar';
 import { FullCalendarModal } from '../components/home/FullCalendarModal';
 import { MacroAdjustmentModal } from '../components/home/MacroAdjustmentModal';
 import { MacrosCard } from '../components/home/MacrosCard';
-import { GeminiCard } from '../components/home/GeminiCard';
 import { VisualGallery } from '../components/home/VisualGallery';
 
-export default function HomeScreen() {
+// Componentes del nuevo Tablero 2x2 y Cards Principales
+import { GuidedScanCard } from '../components/home/GuidedScanCard';
+import { GymActivityCard } from '../components/home/GymActivityCard';
+import { WaterTrackerCard } from '../components/home/WaterTrackerCard';
+import { SmartHealthCard } from '../components/home/SmartHealthCard';
+import { WeightHeroCard } from '../components/home/WeightHeroCard';
+
+export default function HomeScreen({ navigation }) {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isModalVisible, setModalVisible] = useState(false);
     const [isCalendarModalVisible, setCalendarModalVisible] = useState(false);
@@ -32,7 +38,20 @@ export default function HomeScreen() {
     const consumedMacros = useUserStore((state) => state.consumedMacros);
     const history = useUserStore((state) => state.history);
     const updateTargetMacros = useUserStore((state) => state.updateMacros); 
-    const addConsumedFood = useUserStore((state) => state.addConsumedFood);
+
+    // Selectores del Store para Hidratación, Peso y Dispositivos
+    const dailyWater = useUserStore((state) => state.dailyWater);
+    const getDailyWater = useUserStore((state) => state.getDailyWater);
+    const addWater = useUserStore((state) => state.addWater);
+    const setWater = useUserStore((state) => state.setWater);
+    const setWaterTarget = useUserStore((state) => state.setWaterTarget);
+
+    const weightTracker = useUserStore((state) => state.weightTracker);
+    const logWeight = useUserStore((state) => state.logWeight);
+    const smartDevice = useUserStore((state) => state.smartDevice);
+    const setSmartDevice = useUserStore((state) => state.setSmartDevice);
+
+    const activeWater = getDailyWater ? getDailyWater() : { amountMl: 0, targetMl: 2500 };
 
     const isCurrentDay = isSameDay(selectedDate, new Date());
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
@@ -76,7 +95,6 @@ export default function HomeScreen() {
         let currentStreak = 0;
         let dayToCheck = startOfDay(new Date());
         
-        // Si hoy ya está cumplido en el historial, empezamos a contar desde hoy. Si no, desde ayer.
         const todayKey = format(dayToCheck, 'yyyy-MM-dd');
         if (history[todayKey]?.status === 'success') {
             currentStreak++;
@@ -84,7 +102,6 @@ export default function HomeScreen() {
         
         dayToCheck = subDays(dayToCheck, 1);
 
-        // Retrocedemos en el tiempo sumando días exitosos
         while (true) {
             const checkKey = format(dayToCheck, 'yyyy-MM-dd');
             const dayData = history[checkKey];
@@ -92,21 +109,12 @@ export default function HomeScreen() {
                 currentStreak++;
                 dayToCheck = subDays(dayToCheck, 1);
             } else {
-                break; // Se rompió la racha
+                break;
             }
         }
         return currentStreak;
     };
     const streakCount = calculateStreak();
-
-    const handleGeminiScan = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setTimeout(() => {
-            const mockFoodJSON = { calories: 450, protein: 40, carbs: 45, fats: 12 };
-            addConsumedFood(mockFoodJSON);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }, 1500);
-    };
 
     return (
         <View className="flex-1 bg-white">
@@ -116,15 +124,47 @@ export default function HomeScreen() {
 
             <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
                 <MacrosCard 
-    stats={dashboardStats} 
-    onOpenModal={() => setModalVisible(true)} 
-    isReadOnly={!isCurrentDay}
-    pastStatus={overallDayStatus} 
-    streak={streakCount} 
-    dateKey={dateKey}
-/>
+                    stats={dashboardStats} 
+                    onOpenModal={() => setModalVisible(true)} 
+                    isReadOnly={!isCurrentDay}
+                    pastStatus={overallDayStatus} 
+                    streak={streakCount} 
+                    dateKey={dateKey}
+                />
                 
-                {isCurrentDay && <GeminiCard onPress={handleGeminiScan} />}
+                {/* CARD DE PROGRESO: REGISTRO DE PESO (ARRIBA DEL TABLERO) */}
+                {isCurrentDay && (
+                    <WeightHeroCard 
+                        weightTracker={weightTracker}
+                        onPress={() => navigation?.navigate?.('WeightTracker')}
+                    />
+                )}
+                
+                {/* TABLERO MODULAR 2x2 (Solo visible en el día actual) */}
+                {isCurrentDay && (
+                    <View style={{ marginTop: 20, gap: 14 }}>
+                        {/* Fila 1: Nutrición Asistida & Entrenamiento */}
+                        <View style={{ flexDirection: 'row', gap: 14 }}>
+                            <GuidedScanCard onPress={() => navigation?.navigate?.('GuidedScan')} />
+                            <GymActivityCard onPress={() => navigation?.navigate?.('Gym')} />
+                        </View>
+
+                        {/* Fila 2: Hidratación & Peso / Smart Health */}
+                        <View style={{ flexDirection: 'row', gap: 14 }}>
+                            <WaterTrackerCard 
+                                amountMl={activeWater.amountMl}
+                                targetMl={activeWater.targetMl}
+                                onPress={() => navigation?.navigate?.('WaterTracker')}
+                            />
+                            <SmartHealthCard 
+                                weightKg={weightTracker?.currentWeightKg}
+                                muscleMassKg={weightTracker?.muscleMassKg}
+                                smartDevice={smartDevice}
+                                onPress={() => navigation?.navigate?.('WeightTracker')}
+                            />
+                        </View>
+                    </View>
+                )}
                 
                 <VisualGallery />
             </ScrollView>

@@ -14,6 +14,7 @@ const VIEWFINDER_SIZE = Math.min(SCREEN_WIDTH * 0.74, 300);
 export function CameraControlsOverlay({
   remainingScans = 8,
   flash = 'off',
+  isCapturing = false,
   onToggleFlash,
   onBack,
   onTakePicture,
@@ -160,6 +161,7 @@ export function CameraControlsOverlay({
         {/* Disparador de Alta Gama con Doble Anillo */}
         <TouchableOpacity
           onPress={onTakePicture}
+          disabled={isCapturing}
           activeOpacity={0.8}
           style={{
             width: 86,
@@ -167,6 +169,7 @@ export function CameraControlsOverlay({
             borderRadius: 43,
             alignItems: 'center',
             justifyContent: 'center',
+            opacity: isCapturing ? 0.6 : 1,
           }}
         >
           <LinearGradient

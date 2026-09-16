@@ -118,19 +118,9 @@ export function ScanResultModal({
   }));
 
   useEffect(() => {
-    // Iniciar rebote continuo sutil de la flechita
-    arrowTranslateY.value = withRepeat(
-      withSequence(
-        withTiming(4, { duration: 450, easing: Easing.inOut(Easing.ease) }),
-        withTiming(-2, { duration: 450, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
-
-    // Aparece a los 400ms con suave slide up y fade in
-    hintOpacity.value = withDelay(400, withTiming(1, { duration: 400, easing: Easing.out(Easing.ease) }));
-    hintTranslateY.value = withDelay(400, withTiming(0, { duration: 400, easing: Easing.out(Easing.ease) }));
+    // Aparece a los 400ms con suave slide up y fade in sin rebotes
+    hintOpacity.value = withDelay(400, withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) }));
+    hintTranslateY.value = withDelay(400, withTiming(0, { duration: 350, easing: Easing.out(Easing.cubic) }));
 
     const timer = setTimeout(() => {
       hintOpacity.value = withTiming(0, { duration: 500, easing: Easing.in(Easing.ease) });

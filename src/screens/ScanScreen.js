@@ -68,6 +68,7 @@ export default function ScanScreen({ navigation }) {
   }, [navigation]);
 
   const isLeavingRef = useRef(false);
+  const isTakingPictureRef = useRef(false);
 
   // Precalentar conexión DNS/TLS con Google Gemini apenas se monta la pantalla
   useEffect(() => {
@@ -115,6 +116,7 @@ export default function ScanScreen({ navigation }) {
 
   // Resetear por completo el estado del escáner
   const resetScanState = () => {
+    isTakingPictureRef.current = false;
     setPhoto(null);
     setEditableData(null);
     setSelectedPortionLabel(null);
@@ -265,9 +267,9 @@ export default function ScanScreen({ navigation }) {
     }
   };
 
-  // Disparo de la cámara
+  // Disparo de la cámara con bloqueo síncrono multi-tap
   const handleTakePicture = async () => {
-    if (!cameraRef.current || appState !== 'idle') return;
+    if (!cameraRef.current || isTakingPictureRef.current || appStateRef.current !== 'idle') return;
 
     if (remainingScans <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -280,6 +282,7 @@ export default function ScanScreen({ navigation }) {
       return;
     }
 
+    isTakingPictureRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setAppState('capturing');
     appStateRef.current = 'capturing';
@@ -289,6 +292,7 @@ export default function ScanScreen({ navigation }) {
       await processImageUri(photoData.uri);
     } catch (error) {
       console.error('Error al capturar foto:', error);
+      isTakingPictureRef.current = false;
       setAppState('idle');
       appStateRef.current = 'idle';
     }
@@ -296,7 +300,7 @@ export default function ScanScreen({ navigation }) {
 
   // Selección de foto desde la Galería
   const handlePickImageFromGallery = async () => {
-    if (appState !== 'idle') return;
+    if (isTakingPictureRef.current || appStateRef.current !== 'idle') return;
 
     if (remainingScans <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -427,11 +431,12 @@ export default function ScanScreen({ navigation }) {
       {/* Vista de Cámara Nativa */}
       <CameraView style={StyleSheet.absoluteFill} facing={facing} flash={flash} mode="picture" ref={cameraRef} />
 
-      {/* 1. Vista HUD de la cámara (idle) */}
-      {appState === 'idle' && (
+      {/* 1. Vista HUD de la cámara (idle o capturing) */}
+      {(appState === 'idle' || appState === 'capturing') && (
         <CameraControlsOverlay
           remainingScans={remainingScans}
           flash={flash}
+          isCapturing={appState === 'capturing' || isTakingPictureRef.current}
           onToggleFlash={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
           onBack={handleBackAction}
           onTakePicture={handleTakePicture}
