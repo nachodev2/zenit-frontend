@@ -125,6 +125,33 @@ Documento centralizado para registrar ajustes finos, ideas de pulido visual y de
 
 ---
 
+## 🍗 Alimentos, Recetas y Favoritos (`FoodScreen.js`)
+
+### ✅ Completadas
+- [x] **Reemplazo de icono en barra de navegación**: Cambiado icono de lupa (`Search`) por patita de pollo (`Drumstick` de Lucide) en el navbar principal tanto en `App.js` como en `src/screens/_layout.js`.
+- [x] **Estructura en 3 pestañas segmentadas**:
+  1. **`Productos`**: Catálogo y buscador en tiempo real conectado con la API abierta Open Food Facts Argentina + fallback exhaustivo de productos locales (La Serenísima, Arcor, Granix, Lucchetti, etc.).
+  2. **`Mis recetas`**: Creador dinámico de recetas compuestas con cálculo automático de macros totales (Kcal, Proteínas, Carbohidratos, Grasas) y botón de registro directo al día en 1 toque.
+  3. **`Favoritos`**: Muro visual de platos y alimentos marcados con corazón (❤️) sincronizados desde `ScanScreen` y el buscador de comidas.
+- [x] **Cards de productos limpias y 100% visuales**: Tarjetas en cuadrícula tipo e-commerce / catálogo Apple mostrando únicamente la foto de alta calidad del producto, nombre y marca (sin saturar con macros en la card).
+- [x] **Modal interactiva de detalle de producto con Selector Inteligente (Unidad vs. Gramos)**:
+  - **Modo Por Envase / Unidad**: Si seleccionás Monster, alfajores, yogures, huevos o snacks, arranca en **"1 lata (473ml)"**, **"1 alfajor (55g)"**, **"1 pote (120g)"** o **"1 unidad"** con sus macros totales por envase ya calculados, con selector de unidades (`[-] 1 [+]` para 1, 2 o 3 latas/unidades).
+  - **Modo Pesar en Gramos (g)**: Pestaña para alternar al instante si el usuario pesa la comida en báscula (arroz, pollo, avena) con selector numérico y chips rápidos (50g, 100g, 150g, 200g).
+  - 4 cards visuales de macronutrientes (Kcal, Proteínas, Carbos, Grasas) que se recalculan en tiempo real según la unidad o peso seleccionado.
+  - Los dos botones de acción: *"Sumar a la ingesta de mi día"* (con `ZENIT_GRADIENT`) y *"Agregar a una receta"* (con icono de recetario/carrito).
+- [x] **Carro de compras de recetas (E-commerce Style)**:
+  - Barra flotante inferior en tiempo real que aparece al tener 1 o más productos en la receta (`🛒 X ingredientes • X kcal • Xg Prot`), permitiendo abrir el carrito en cualquier momento.
+  - Modal del carrito con ajuste dinámico de gramos por ingrediente (`+` / `-`), botón para eliminar ítems (`Trash2`), cálculo automático de macros totales acumulados y dos opciones de guardado (*"Guardar en Mis Recetas"* o *"Guardar y Consumir Hoy"*).
+- [x] **Integración con Open Food Facts & Catálogo Argentino**: Imágenes apetitosas precargadas para productos nacionales masivos (La Serenísima, Lucchetti, Arcor, Granix, Gallo, Quaker, etc.).
+- [x] **Alineación 100% con `DESIGN_SYSTEM.md`**: Implementación canónica del **Anillo Hero Kcal (`#DC2626` ➔ `#F97316`)**, el **Trío de Sub-anillos (`PROT`, `CARB`, `GRASA`)**, la **Píldora Inteligente de IA (`SmartInsightCapsule` en `#0F172A`)** y los botones primarios con sombra cálida.
+
+### 📌 Pendientes / Por revisar
+- [ ] Conectar escáner de código de barras físico con cámara (`expo-barcode-scanner` / `CameraView` de `expo-camera`) dentro del modal de búsqueda por código de barras.
+- [ ] Sincronización en la nube (Supabase / Backend) de los productos comunitarios cargados por los usuarios para alimentar de forma colaborativa la base de datos abierta de Zenit.
+- [ ] Marcado de favoritos directo desde `FoodScreen` para recetas propias.
+
+---
+
 ## 🎨 UI / UX General, Sonidos & Animaciones
 
 ### ✅ Completadas

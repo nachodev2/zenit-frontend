@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
-import { Home, Search, ScanLine, Dumbbell, Cog } from 'lucide-react-native';
+import { Home, Drumstick, ScanLine, Dumbbell, Cog } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -36,11 +36,11 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 2. BÚSQUEDA */}
+      {/* 2. ALIMENTOS Y RECETAS */}
       <Tabs.Screen
         name="diario"
         options={{
-          tabBarIcon: ({ color }) => <Search size={26} color={color} strokeWidth={1.5} />,
+          tabBarIcon: ({ color }) => <Drumstick size={26} color={color} strokeWidth={1.5} />,
         }}
       />
 

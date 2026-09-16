@@ -65,6 +65,57 @@ export const useUserStore = create(
         deviceName: null,
         type: null,
       },
+
+      // Alimentos Favoritos, Recetario Propio y Productos Custom (FoodScreen)
+      favorites: [
+        {
+          id: 'fav-1',
+          name: 'Pechuga de Pollo con Arroz y Palta',
+          calories: 520,
+          protein: 48,
+          carbs: 55,
+          fats: 12,
+          isFavorite: true,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: 'fav-2',
+          name: 'Bowl de Yogur con Avena y Frutos Rojos',
+          calories: 340,
+          protein: 22,
+          carbs: 45,
+          fats: 8,
+          isFavorite: true,
+          timestamp: new Date().toISOString(),
+        }
+      ],
+      recipes: [
+        {
+          id: 'rec-1',
+          name: 'Tortilla de Avena y Claras',
+          servings: 1,
+          totalMacros: { calories: 380, protein: 32, carbs: 42, fats: 6 },
+          ingredients: [
+            { name: 'Claras de huevo', amount: '4 unidades', calories: 68, protein: 14, carbs: 1, fats: 0 },
+            { name: 'Huevo entero', amount: '1 unidad', calories: 72, protein: 6, carbs: 0.5, fats: 5 },
+            { name: 'Avena instantánea', amount: '60g', calories: 240, protein: 12, carbs: 40.5, fats: 1 },
+          ]
+        },
+        {
+          id: 'rec-2',
+          name: 'Batido Proteico Post-Entreno',
+          servings: 1,
+          totalMacros: { calories: 310, protein: 35, carbs: 36, fats: 3 },
+          ingredients: [
+            { name: 'Proteína Whey', amount: '30g (1 scoop)', calories: 120, protein: 24, carbs: 2, fats: 1.5 },
+            { name: 'Leche descremada', amount: '250ml', calories: 85, protein: 8, carbs: 12, fats: 0.5 },
+            { name: 'Banana madura', amount: '1 mediana', calories: 105, protein: 1.3, carbs: 27, fats: 0.3 },
+          ]
+        }
+      ],
+      customProducts: [],
+      // Carrito de compras para armar recetas
+      recipeCart: [],
       
       // 2. Historial de días pasados
       // Formato: { "2026-09-03": { status: "success", macros: {...} } }
@@ -292,7 +343,192 @@ export const useUserStore = create(
 
       setSmartDevice: (device) => set({ smartDevice: device }),
 
-      // 10. Resetear la cuenta (Logout / Debug)
+      // 10. Acciones de FoodScreen (Favoritos, Recetas, Productos)
+      toggleFavorite: (mealItem) => {
+        set((state) => {
+          const existingFavorites = state.favorites || [];
+          const exists = existingFavorites.some((f) => f.id === mealItem.id || f.name.toLowerCase() === mealItem.name.toLowerCase());
+          if (exists) {
+            return {
+              favorites: existingFavorites.filter((f) => f.id !== mealItem.id && f.name.toLowerCase() !== mealItem.name.toLowerCase())
+            };
+          } else {
+            const newFav = {
+              id: mealItem.id || Date.now().toString(),
+              name: mealItem.name,
+              calories: Number(mealItem.calories) || 0,
+              protein: Number(mealItem.protein) || 0,
+              carbs: Number(mealItem.carbs) || 0,
+              fats: Number(mealItem.fats) || 0,
+              imageUri: mealItem.imageUri || null,
+              isFavorite: true,
+              timestamp: new Date().toISOString(),
+            };
+            return {
+              favorites: [newFav, ...existingFavorites]
+            };
+          }
+        });
+      },
+
+      addRecipe: (recipe) => {
+        set((state) => ({
+          recipes: [
+            {
+              id: Date.now().toString(),
+              ...recipe,
+            },
+            ...(state.recipes || [])
+          ]
+        }));
+      },
+
+      deleteRecipe: (recipeId) => {
+        set((state) => ({
+          recipes: (state.recipes || []).filter((r) => r.id !== recipeId)
+        }));
+      },
+
+      addCustomProduct: (product) => {
+        set((state) => ({
+          customProducts: [
+            {
+              id: Date.now().toString(),
+              ...product,
+            },
+            ...(state.customProducts || [])
+          ]
+        }));
+      },
+
+      // Carrito de compras para recetas (E-commerce style)
+      addToRecipeCart: (product, grams = 100) => {
+        set((state) => {
+          const currentCart = state.recipeCart || [];
+          const existingIndex = currentCart.findIndex((item) => item.id === product.id);
+
+          // Cálculo proporcional de macros según gramos seleccionados
+          // Base: si product.servingSize o product.calories está basado en 100g
+          const baseCalories = Number(product.calories) || 0;
+          const baseProtein = Number(product.protein) || 0;
+          const baseCarbs = Number(product.carbs) || 0;
+          const baseFats = Number(product.fats) || 0;
+
+          const ratio = grams / 100;
+          const itemCalories = Math.round(baseCalories * ratio);
+          const itemProtein = Number((baseProtein * ratio).toFixed(1));
+          const itemCarbs = Number((baseCarbs * ratio).toFixed(1));
+          const itemFats = Number((baseFats * ratio).toFixed(1));
+
+          if (existingIndex >= 0) {
+            const updated = [...currentCart];
+            const currentItem = updated[existingIndex];
+            const newGrams = (currentItem.grams || 100) + grams;
+            const newRatio = newGrams / 100;
+            updated[existingIndex] = {
+              ...currentItem,
+              grams: newGrams,
+              calories: Math.round(baseCalories * newRatio),
+              protein: Number((baseProtein * newRatio).toFixed(1)),
+              carbs: Number((baseCarbs * newRatio).toFixed(1)),
+              fats: Number((baseFats * newRatio).toFixed(1)),
+            };
+            return { recipeCart: updated };
+          } else {
+            const cartItem = {
+              id: product.id || Date.now().toString(),
+              name: product.name,
+              brand: product.brand || '',
+              image: product.image || null,
+              baseCalories,
+              baseProtein,
+              baseCarbs,
+              baseFats,
+              grams,
+              calories: itemCalories,
+              protein: itemProtein,
+              carbs: itemCarbs,
+              fats: itemFats,
+            };
+            return { recipeCart: [...currentCart, cartItem] };
+          }
+        });
+      },
+
+      updateRecipeCartGrams: (itemId, newGrams) => {
+        if (newGrams <= 0) {
+          set((state) => ({
+            recipeCart: (state.recipeCart || []).filter((item) => item.id !== itemId),
+          }));
+          return;
+        }
+        set((state) => ({
+          recipeCart: (state.recipeCart || []).map((item) => {
+            if (item.id === itemId) {
+              const ratio = newGrams / 100;
+              return {
+                ...item,
+                grams: newGrams,
+                calories: Math.round(item.baseCalories * ratio),
+                protein: Number((item.baseProtein * ratio).toFixed(1)),
+                carbs: Number((item.baseCarbs * ratio).toFixed(1)),
+                fats: Number((item.baseFats * ratio).toFixed(1)),
+              };
+            }
+            return item;
+          }),
+        }));
+      },
+
+      removeFromRecipeCart: (itemId) => {
+        set((state) => ({
+          recipeCart: (state.recipeCart || []).filter((item) => item.id !== itemId),
+        }));
+      },
+
+      clearRecipeCart: () => {
+        set({ recipeCart: [] });
+      },
+
+      saveRecipeFromCart: (recipeName = 'Mi Receta', servings = 1) => {
+        const state = useUserStore.getState();
+        const cart = state.recipeCart || [];
+        if (cart.length === 0) return null;
+
+        const totalCals = cart.reduce((sum, item) => sum + (Number(item.calories) || 0), 0);
+        const totalProt = cart.reduce((sum, item) => sum + (Number(item.protein) || 0), 0);
+        const totalCarbs = cart.reduce((sum, item) => sum + (Number(item.carbs) || 0), 0);
+        const totalFats = cart.reduce((sum, item) => sum + (Number(item.fats) || 0), 0);
+
+        const newRecipe = {
+          id: Date.now().toString(),
+          name: recipeName.trim() || 'Mi Receta Zenit',
+          servings: Math.max(1, Number(servings) || 1),
+          totalMacros: {
+            calories: totalCals,
+            protein: Number(totalProt.toFixed(1)),
+            carbs: Number(totalCarbs.toFixed(1)),
+            fats: Number(totalFats.toFixed(1)),
+          },
+          ingredients: cart.map((item) => ({
+            name: item.name,
+            amount: `${item.grams}g`,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fats: item.fats,
+          })),
+        };
+
+        set((prev) => ({
+          recipes: [newRecipe, ...(prev.recipes || [])],
+          recipeCart: [],
+        }));
+
+        return newRecipe;
+      },
+
+      // 11. Resetear la cuenta (Logout / Debug)
       resetStore: () => set({ 
         isOnboarded: false, 
         createdAt: null,

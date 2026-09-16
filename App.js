@@ -7,7 +7,7 @@ import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Search, ScanLine, Dumbbell, Cog } from 'lucide-react-native';
+import { Home, Drumstick, ScanLine, Dumbbell, Cog } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Importamos el gradiente oficial de tu theme
@@ -15,6 +15,7 @@ import { ZENIT_GRADIENT } from './src/constants/theme';
 
 // Screens existentes
 import HomeScreen from './src/screens/HomeScreen';
+import FoodScreen from './src/screens/FoodScreen';
 import DiarioScreen from './src/screens/DiarioScreen.js';
 import ScannerScreen from './src/screens/ScanScreen.js';
 import GymScreen from './src/screens/GymScreen';
@@ -63,10 +64,10 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Diario"
-        component={DiarioScreen}
+        name="Food"
+        component={FoodScreen}
         options={{
-          tabBarIcon: ({ color }) => <Search size={26} color={color} strokeWidth={1.5} />,
+          tabBarIcon: ({ color }) => <Drumstick size={26} color={color} strokeWidth={1.5} />,
         }}
       />
       <Tab.Screen
