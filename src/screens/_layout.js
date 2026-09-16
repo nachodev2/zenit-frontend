@@ -21,7 +21,7 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: '#e5e5e5',
         },
-        tabBarActiveTintColor: '#3b82f6',
+        tabBarActiveTintColor: '#F97316',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarItemStyle: {
           paddingTop: 8,
@@ -44,7 +44,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 3. SCANNER (Botón central azul) */}
+      {/* 3. SCANNER (Botón central naranja Zenit) */}
       <Tabs.Screen
         name="scanner"
         options={{
@@ -54,13 +54,13 @@ export default function TabLayout() {
                 width: 65,
                 height: 65,
                 borderRadius: 32.5,
-                backgroundColor: '#3b82f6',
+                backgroundColor: '#F97316',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 30,
                 borderWidth: 4,
                 borderColor: '#ffffff',
-                shadowColor: '#3b82f6',
+                shadowColor: '#F97316',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.35,
                 shadowRadius: 10,

@@ -1,194 +1,516 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, BackHandler } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Sparkles } from 'lucide-react-native';
+import { useSharedValue, withTiming, Easing } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Zap, ZapOff, RotateCcw, X, Check, Camera as CameraIcon, ChevronLeft } from 'lucide-react-native';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 
-const { width } = Dimensions.get('window');
-const FOCUS_SIZE = width * 0.7;
+import { ZENIT_GRADIENT } from '../constants/theme';
+import { analyzeFoodImage, prewarmVisionService } from '../services/ai/geminiVisionService';
+import { useUserStore } from '../store/useUserStore';
+import { ZenitModalAlert } from '../components/ui/ZenitModalAlert';
+
+// Subcomponentes modulares del escáner
+import { CameraControlsOverlay } from '../components/scanner/CameraControlsOverlay';
+import { ScanProcessingOverlay } from '../components/scanner/ScanProcessingOverlay';
+import { ScanResultModal } from '../components/scanner/ScanResultModal';
+import { CoachChatModal } from '../components/scanner/CoachChatModal';
 
 export default function ScanScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [facing, setFacing] = useState('back');
-  const [flash, setFlash] = useState('off');
-  const [photo, setPhoto] = useState(null);
   const cameraRef = useRef(null);
 
-  // --- 1. ESTADO: PERMISOS ---
-  if (!permission) return <View className="flex-1 bg-black" />;
-  
-  if (!permission.granted) {
-    return (
-      <View className="flex-1 bg-black items-center justify-center p-6">
-        <View className="bg-gray-900 p-6 rounded-3xl items-center shadow-lg shadow-blue-900/20">
-            <CameraIcon size={60} color="#3b82f6" />
-            <Text className="text-white text-xl font-bold text-center mt-4 mb-2">Habilitar Cámara</Text>
-            <Text className="text-gray-400 text-center mb-6">
-            Zenit usa IA para analizar las calorías de tus comidas.
-            </Text>
-            <TouchableOpacity 
-            onPress={requestPermission}
-            className="bg-blue-600 w-full py-4 rounded-xl active:bg-blue-700"
-            >
-            <Text className="text-white font-bold text-center text-lg">Permitir Acceso</Text>
-            </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+  // Tema claro (blanco) por defecto según configuración del usuario
+  const isDark = false;
 
-  // --- FUNCIONES ---
-  const handleTakePicture = async () => {
-    console.log("Intentando tomar foto..."); // DEBUG
-    if (cameraRef.current) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
-      try {
-        const photoData = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: false,
-          skipProcessing: true, // <--- CRUCIAL: Evita bloqueos en Android
-          shutterSound: false, // <--- Opcional: hace la captura más rápida
-        });
-        
-        console.log("Foto tomada:", photoData.uri); // DEBUG
-        setPhoto(photoData.uri);
-      } catch (error) {
-        console.error("Error al tomar foto:", error);
-        Alert.alert("Error", "No se pudo tomar la foto. Intenta reiniciar la app.");
+  // Estados de la máquina del escáner
+  const [appState, setAppState] = useState('idle'); // 'idle' | 'capturing' | 'processing' | 'result'
+  const [photo, setPhoto] = useState(null);
+  const [facing, setFacing] = useState('back');
+  const [flash, setFlash] = useState('off');
+  const [editableData, setEditableData] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showCoachChat, setShowCoachChat] = useState(false);
+  const [selectedPortionLabel, setSelectedPortionLabel] = useState(null);
+
+  const baseDataRef = useRef(null);
+  const selectedMultiplierRef = useRef(1);
+  const progress = useSharedValue(0);
+
+  // Datos globales del usuario y macros desde Zustand
+  const addConsumedFood = useUserStore((state) => state.addConsumedFood);
+  const targetMacros = useUserStore((state) => state.targetMacros);
+  const consumedMacros = useUserStore((state) => state.consumedMacros);
+  const userName = useUserStore((state) => state.name);
+  const userGoal = useUserStore((state) => state.goal);
+  const getRemainingScans = useUserStore((state) => state.getRemainingScans);
+  const incrementDailyScans = useUserStore((state) => state.incrementDailyScans);
+  const resetDailyScans = useUserStore((state) => state.resetDailyScans);
+
+  const remainingScans = getRemainingScans ? getRemainingScans(8) : 8;
+
+  const appStateRef = useRef(appState);
+  useEffect(() => {
+    appStateRef.current = appState;
+  }, [appState]);
+
+  const showCoachChatRef = useRef(showCoachChat);
+  useEffect(() => {
+    showCoachChatRef.current = showCoachChat;
+  }, [showCoachChat]);
+
+  const navigationRef = useRef(navigation);
+  useEffect(() => {
+    navigationRef.current = navigation;
+  }, [navigation]);
+
+  const isLeavingRef = useRef(false);
+  const isTakingPictureRef = useRef(false);
+
+  // Precalentar conexión DNS/TLS con Google Gemini apenas se monta la pantalla
+  useEffect(() => {
+    prewarmVisionService();
+  }, []);
+
+  // Modal de Alertas y Confirmaciones Zenit
+  const [dialogConfig, setDialogConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    confirmText: 'Entendido',
+    cancelText: null,
+    onConfirm: null,
+    onCancel: null,
+  });
+
+  const showCustomAlert = ({
+    title,
+    message,
+    type = 'warning',
+    confirmText = 'Entendido',
+    cancelText = null,
+    onConfirm = null,
+    onCancel = null,
+  }) => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        setDialogConfig((prev) => ({ ...prev, visible: false }));
+        if (onConfirm) onConfirm();
+      },
+      onCancel: () => {
+        setDialogConfig((prev) => ({ ...prev, visible: false }));
+        if (onCancel) onCancel();
+      },
+    });
+  };
+
+  // Resetear por completo el estado del escáner
+  const resetScanState = () => {
+    isTakingPictureRef.current = false;
+    setPhoto(null);
+    setEditableData(null);
+    setSelectedPortionLabel(null);
+    baseDataRef.current = null;
+    selectedMultiplierRef.current = 1;
+    setIsFavorite(false);
+    setShowCoachChat(false);
+    progress.value = 0;
+    setAppState('idle');
+    appStateRef.current = 'idle';
+  };
+
+  // Confirmar salida a la pantalla principal
+  const confirmExitToHome = () => {
+    showCustomAlert({
+      title: '¿Volver al inicio?',
+      message: '¿Estás seguro de que deseas volver a la pantalla principal? Se perderá todo el progreso del escaneo actual.',
+      type: 'warning',
+      confirmText: 'Sí, salir',
+      cancelText: 'Continuar aquí',
+      onConfirm: () => {
+        isLeavingRef.current = true;
+        resetScanState();
+        if (navigationRef.current?.navigate) navigationRef.current.navigate('Home');
+        else if (navigationRef.current?.goBack) navigationRef.current.goBack();
+      },
+    });
+  };
+
+  // Acción de retroceso inteligente
+  const handleBackAction = () => {
+    if (showCoachChatRef.current) {
+      setShowCoachChat(false);
+      return;
+    }
+    if (appStateRef.current !== 'idle') {
+      confirmExitToHome();
+      return;
+    }
+    if (navigation?.navigate) navigation.navigate('Home');
+    else if (navigation?.goBack) navigation.goBack();
+  };
+
+  // Interceptar botón físico y gestos de atrás en Android
+  useEffect(() => {
+    const onBackPress = () => {
+      if (showCoachChatRef.current) {
+        setShowCoachChat(false);
+        return true;
       }
-    } else {
-        console.log("Error: La referencia de la cámara es nula");
+      if (appStateRef.current !== 'idle') {
+        confirmExitToHome();
+        return true;
+      }
+      if (navigationRef.current?.navigate) {
+        navigationRef.current.navigate('Home');
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, []);
+
+  // Pipeline unificado de procesamiento para Cámara y Galería
+  const processImageUri = async (uri) => {
+    if (remainingScans <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showCustomAlert({
+        title: 'Límite diario alcanzado',
+        message: 'Ya utilizaste tus 8 escaneos de hoy. Mañana a las 00:00 hs se renovará tu cupo para que sigas registrando tus comidas.',
+        type: 'warning',
+        confirmText: 'Entendido',
+      });
+      return;
+    }
+
+    setPhoto({ uri });
+    setAppState('processing');
+    appStateRef.current = 'processing';
+    progress.value = 0;
+    progress.value = withTiming(90, { duration: 3500, easing: Easing.out(Easing.ease) });
+
+    try {
+      // 1. Redimensionar a max 800px ancho (~45KB) para inferencia instantánea
+      const optimized = await manipulateAsync(
+        uri,
+        [{ resize: { width: 800 } }],
+        { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+      );
+
+      const result = await analyzeFoodImage(optimized.base64);
+
+      if (!result.isFood) {
+        progress.value = 0;
+        setAppState('idle');
+        appStateRef.current = 'idle';
+        setPhoto(null);
+        showCustomAlert({
+          title: 'Comida no detectada',
+          message: 'Parece que no hay alimentos o bebidas en la foto. Asegurate de enfocar bien el plato o producto.',
+          type: 'warning',
+          confirmText: 'Entendido',
+        });
+        return;
+      }
+
+      // Descontamos escaneo diario al verificar que fue comida válida
+      incrementDailyScans();
+
+      baseDataRef.current = { ...result };
+      if (result.portionPresets && result.portionPresets.length > 0) {
+        const defaultPreset = result.portionPresets[0];
+        selectedMultiplierRef.current = typeof defaultPreset.multiplier === 'number' ? defaultPreset.multiplier : 1;
+        setSelectedPortionLabel(defaultPreset.label);
+        setEditableData({
+          ...result,
+          totalCalories: Math.round(result.totalCalories * defaultPreset.multiplier),
+          totalProtein: Math.round(result.totalProtein * defaultPreset.multiplier),
+          totalCarbs: Math.round(result.totalCarbs * defaultPreset.multiplier),
+          totalFat: Math.round(result.totalFat * defaultPreset.multiplier),
+        });
+      } else {
+        selectedMultiplierRef.current = 1;
+        setSelectedPortionLabel('100%');
+        setEditableData(result);
+      }
+
+      progress.value = withTiming(100, { duration: 350 });
+      setTimeout(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setAppState('result');
+        appStateRef.current = 'result';
+      }, 400);
+
+    } catch (error) {
+      console.error('Error al procesar imagen:', error);
+      setAppState('idle');
+      appStateRef.current = 'idle';
+      setPhoto(null);
+      showCustomAlert({
+        title: 'Error de análisis',
+        message: 'Ocurrió un problema al procesar la imagen. Verificá tu conexión e intentá de nuevo.',
+        type: 'danger',
+        confirmText: 'Reintentar',
+      });
     }
   };
 
-  const handleRetake = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setPhoto(null);
+  // Disparo de la cámara con bloqueo síncrono multi-tap
+  const handleTakePicture = async () => {
+    if (!cameraRef.current || isTakingPictureRef.current || appStateRef.current !== 'idle') return;
+
+    if (remainingScans <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showCustomAlert({
+        title: 'Límite diario alcanzado',
+        message: 'Ya utilizaste tus 8 escaneos de hoy. Mañana a las 00:00 hs se renovará tu cupo para que sigas registrando tus comidas.',
+        type: 'warning',
+        confirmText: 'Entendido',
+      });
+      return;
+    }
+
+    isTakingPictureRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setAppState('capturing');
+    appStateRef.current = 'capturing';
+
+    try {
+      const photoData = await cameraRef.current.takePictureAsync({ quality: 0.8, skipProcessing: true });
+      await processImageUri(photoData.uri);
+    } catch (error) {
+      console.error('Error al capturar foto:', error);
+      isTakingPictureRef.current = false;
+      setAppState('idle');
+      appStateRef.current = 'idle';
+    }
   };
 
-  const handleAnalyze = () => {
+  // Selección de foto desde la Galería
+  const handlePickImageFromGallery = async () => {
+    if (isTakingPictureRef.current || appStateRef.current !== 'idle') return;
+
+    if (remainingScans <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showCustomAlert({
+        title: 'Límite diario alcanzado',
+        message: 'Ya utilizaste tus 8 escaneos de hoy. Mañana a las 00:00 hs se renovará tu cupo para que sigas registrando tus comidas.',
+        type: 'warning',
+        confirmText: 'Entendido',
+      });
+      return;
+    }
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        showCustomAlert({
+          title: 'Permiso necesario',
+          message: 'Zenit necesita acceso a tu galería para que puedas seleccionar fotos de tus comidas.',
+          type: 'warning',
+          confirmText: 'Entendido',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        await processImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error al seleccionar de galería:', error);
+    }
+  };
+
+  // Guardar comida en el Store y regresar
+  const handleSave = () => {
+    if (!editableData) return;
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    console.log("Analizando foto:", photo);
-    // Aquí iría tu lógica de navegación o subida
+
+    addConsumedFood({
+      name: editableData.mealName || 'Comida escaneada',
+      calories: Number(editableData.totalCalories) || 0,
+      protein: Number(editableData.totalProtein) || 0,
+      carbs: Number(editableData.totalCarbs) || 0,
+      fats: Number(editableData.totalFat) || 0,
+      imageUri: photo?.uri || null,
+      ingredients: editableData.ingredients || [],
+    });
+
+    isLeavingRef.current = true;
+    resetScanState();
+    if (navigation?.navigate) navigation.navigate('Home');
+    else if (navigation?.goBack) navigation.goBack();
   };
 
-  const toggleFlash = () => {
-    Haptics.selectionAsync();
-    setFlash(cur => (cur === 'off' ? 'on' : 'off'));
+  // Descartar comida solicitando confirmación
+  const handleDiscard = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (e) {}
+
+    showCustomAlert({
+      title: '¿Descartar comida?',
+      message: 'Se perderán los macros calculados y la foto escaneada. No se guardará ningún alimento en tu día.',
+      type: 'danger',
+      confirmText: 'Sí, descartar',
+      cancelText: 'Seguir editando',
+      onConfirm: () => {
+        isLeavingRef.current = true;
+        resetScanState();
+        if (navigationRef.current?.navigate) navigationRef.current.navigate('Home');
+        else if (navigationRef.current?.goBack) navigationRef.current.goBack();
+      },
+    });
   };
 
-  const toggleCamera = () => {
-    Haptics.selectionAsync();
-    setFacing(cur => (cur === 'back' ? 'front' : 'back'));
-  };
+  // Estado de carga de permisos de cámara
+  if (!permission) {
+    return <View className="flex-1 bg-black" />;
+  }
 
-  // --- 2. VISTA: PREVISUALIZACIÓN (RESULTADO) ---
-  if (photo) {
+  // Si no hay permiso, pantalla de solicitud
+  if (!permission.granted) {
     return (
-      <View className="flex-1 bg-black">
-        <Image source={{ uri: photo }} className="flex-1" resizeMode="cover" />
-        
-        {/* Overlay con gradiente falso */}
-        <View className="absolute bottom-0 w-full bg-black/80 pt-6 pb-12 px-8 rounded-t-3xl shadow-2xl">
-          <Text className="text-white text-center font-bold text-lg mb-6">¿Analizar esta comida?</Text>
-          
-          <View className="flex-row justify-between items-center">
-            {/* Botón Repetir */}
-            <TouchableOpacity onPress={handleRetake} className="flex-row items-center bg-gray-800 px-6 py-4 rounded-2xl border border-gray-700">
-              <X size={20} color="white" />
-              <Text className="text-white ml-2 font-semibold">Repetir</Text>
-            </TouchableOpacity>
-
-            {/* Botón Confirmar */}
-            <TouchableOpacity onPress={handleAnalyze} className="flex-row items-center bg-blue-600 px-8 py-4 rounded-2xl shadow-lg shadow-blue-500/30">
-              <Text className="text-white mr-2 font-bold text-lg">Zenit AI</Text>
-              <Check size={20} color="white" strokeWidth={3} />
-            </TouchableOpacity>
-          </View>
+      <View className="flex-1 bg-black items-center justify-center px-8">
+        <View className="w-20 h-20 bg-[#F97316]/20 rounded-full items-center justify-center mb-6">
+          <Sparkles size={32} color="#F97316" />
         </View>
+        <Text className="text-white text-2xl font-bold text-center mb-3 tracking-tight">
+          Activá tu cámara
+        </Text>
+        <Text className="text-gray-400 text-center mb-10 text-base leading-6">
+          Zenit necesita acceso a tu cámara para poder escanear tus comidas y calcular los macros automáticamente.
+        </Text>
+        <TouchableOpacity onPress={requestPermission} activeOpacity={0.8}>
+          <LinearGradient
+            colors={ZENIT_GRADIENT}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              paddingVertical: 16,
+              paddingHorizontal: 40,
+              borderRadius: 999,
+              shadowColor: '#F97316',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 5,
+            }}
+          >
+            <Text className="text-white font-bold text-lg text-center">
+              Otorgar Permiso
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  // --- 3. VISTA: CÁMARA (LIVE) ---
   return (
-    <View style={{ flex: 1, backgroundColor: 'black' }}>
-      <CameraView 
-        style={StyleSheet.absoluteFill} 
-        facing={facing} 
-        flash={flash}
-        mode="picture" // <--- IMPORTANTE: Define explícitamente el modo
-        ref={cameraRef}
+    <View className="flex-1 bg-black">
+      {/* Vista de Cámara Nativa */}
+      <CameraView style={StyleSheet.absoluteFill} facing={facing} flash={flash} mode="picture" ref={cameraRef} />
+
+      {/* 1. Vista HUD de la cámara (idle o capturing) */}
+      {(appState === 'idle' || appState === 'capturing') && (
+        <CameraControlsOverlay
+          remainingScans={remainingScans}
+          flash={flash}
+          isCapturing={appState === 'capturing' || isTakingPictureRef.current}
+          onToggleFlash={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
+          onBack={handleBackAction}
+          onTakePicture={handleTakePicture}
+          onPickImage={handlePickImageFromGallery}
+          onToggleFacing={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+          onResetDailyScans={() => {
+            resetDailyScans();
+            showCustomAlert({
+              title: '¡Cupo reiniciado!',
+              message: 'Tu cupo diario de escaneos se reinició a 8/8 para que puedas continuar testeando.',
+              type: 'success',
+              confirmText: 'Genial',
+            });
+          }}
+        />
+      )}
+
+      {/* 2. Pantalla de carga y progreso con IA (processing) */}
+      {appState === 'processing' && photo && (
+        <ScanProcessingOverlay photo={photo} progress={progress} />
+      )}
+
+      {/* 3. Hoja de resultados y macros (result) */}
+      {appState === 'result' && editableData && photo && (
+        <ScanResultModal
+          photo={photo}
+          editableData={editableData}
+          setEditableData={setEditableData}
+          baseDataRef={baseDataRef}
+          selectedMultiplierRef={selectedMultiplierRef}
+          selectedPortionLabel={selectedPortionLabel}
+          setSelectedPortionLabel={setSelectedPortionLabel}
+          isFavorite={isFavorite}
+          setIsFavorite={setIsFavorite}
+          onOpenCoach={() => setShowCoachChat(true)}
+          onDiscard={handleDiscard}
+          onSave={handleSave}
+          onBack={handleBackAction}
+          showCoachChat={showCoachChat}
+          isDark={isDark}
+        />
+      )}
+
+      {/* 4. Chat Conversacional con el Zenit Coach */}
+      <CoachChatModal
+        visible={showCoachChat}
+        isDark={isDark}
+        editableData={editableData}
+        onClose={() => setShowCoachChat(false)}
+        showAlert={showCustomAlert}
+        userData={{
+          name: userName || 'Nacho',
+          goal: userGoal || 'Ganar masa muscular (Volumen limpio)',
+          macros: {
+            calories: Math.max(0, (targetMacros?.calories || 2500) - (consumedMacros?.calories || 0)),
+            protein: Math.max(0, (targetMacros?.protein || 150) - (consumedMacros?.protein || 0)),
+            carbs: Math.max(0, (targetMacros?.carbs || 300) - (consumedMacros?.carbs || 0)),
+            fats: Math.max(0, (targetMacros?.fats || 50) - (consumedMacros?.fats || 0)),
+          },
+        }}
       />
 
-      {/* UI FLOTANTE */}
-      <SafeAreaView style={{ flex: 1, justifyContent: 'space-between' }}>
-        
-        {/* HEADER */}
-        <View className="flex-row justify-between items-center px-6 pt-2">
-           <View className="w-10" /> 
-
-          <View className="bg-black/40 px-4 py-1 rounded-full backdrop-blur-md">
-            <Text className="text-white text-xs font-medium tracking-widest uppercase">Escáner IA</Text>
-          </View>
-
-          <TouchableOpacity 
-            onPress={toggleFlash}
-            className={`w-10 h-10 rounded-full items-center justify-center ${flash === 'on' ? 'bg-yellow-400' : 'bg-black/40'}`}
-          >
-            {flash === 'on' ? <Zap size={18} color="black" fill="black" /> : <ZapOff size={18} color="white" />}
-          </TouchableOpacity>
-        </View>
-
-        {/* CENTRO: Marco de Enfoque */}
-        <View className="items-center justify-center flex-1">
-          <View 
-            style={{ width: FOCUS_SIZE, height: FOCUS_SIZE }} 
-            className="border border-white/30 rounded-3xl justify-between p-0 overflow-hidden"
-          >
-             <View className="flex-row justify-between">
-                <View className="w-6 h-6 border-t-4 border-l-4 border-white rounded-tl-xl" />
-                <View className="w-6 h-6 border-t-4 border-r-4 border-white rounded-tr-xl" />
-             </View>
-             <View className="flex-row justify-between">
-                <View className="w-6 h-6 border-b-4 border-l-4 border-white rounded-bl-xl" />
-                <View className="w-6 h-6 border-b-4 border-r-4 border-white rounded-br-xl" />
-             </View>
-          </View>
-          <Text className="text-white/80 mt-4 text-sm font-medium bg-black/40 px-4 py-2 rounded-full overflow-hidden">
-            Centra tu plato aquí
-          </Text>
-        </View>
-
-        {/* FOOTER */}
-        <View className="flex-row justify-around items-center pb-8 pt-4">
-           {/* Botón Volver */}
-           <TouchableOpacity 
-             className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/10"
-             onPress={() => navigation.goBack()}
-           >
-              <ChevronLeft size={28} color="white" />
-           </TouchableOpacity>
-
-           {/* DISPARADOR */}
-           <TouchableOpacity onPress={handleTakePicture} activeOpacity={0.7}>
-             <View className="w-20 h-20 rounded-full border-4 border-white/30 items-center justify-center">
-               <View className="w-16 h-16 rounded-full bg-white shadow-lg shadow-white/50" />
-             </View>
-           </TouchableOpacity>
-
-           {/* Girar Cámara */}
-           <TouchableOpacity 
-             onPress={toggleCamera} 
-             className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/10"
-           >
-             <RotateCcw size={24} color="white" />
-           </TouchableOpacity>
-        </View>
-
-      </SafeAreaView>
+      {/* 5. Alertas y Modales del Sistema Zenit */}
+      <ZenitModalAlert
+        visible={dialogConfig.visible}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        type={dialogConfig.type}
+        confirmText={dialogConfig.confirmText}
+        cancelText={dialogConfig.cancelText}
+        onConfirm={dialogConfig.onConfirm}
+        onCancel={dialogConfig.onCancel}
+        isDark={isDark}
+      />
     </View>
   );
 }

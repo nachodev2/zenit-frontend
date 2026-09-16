@@ -20,6 +20,8 @@ import { SignUpStep } from '../components/onboarding/steps/SignUpStep';
 import ProcessingScreen from '../components/onboarding/ProcessingScreen'; 
 import { GradientButton } from '../components/ui/GradientButton';
 import { ZENIT_GRADIENT } from '../constants/theme';
+import { useUserStore } from '../store/useUserStore';
+
 
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? RNStatusBar.currentHeight + 20 : 0;
 
@@ -108,7 +110,7 @@ export default function OnboardingScreen({ navigation }) {
 
     const renderContent = () => {
         switch(step) {
-            case 0: return <HeroStep onNext={advanceStep} />;
+            case 0: return <HeroStep onNext={advanceStep} onLogin={() => navigation.replace('Main')} />;
             case 1: return <SelectionStep 
                         title="Elegí tu género" subtitle="Para calibrar tu metabolismo basal."
                         value={formData.gender} onChange={(val) => setFormData({...formData, gender: val})}
@@ -142,7 +144,19 @@ export default function OnboardingScreen({ navigation }) {
             case 10: return <SocialProofStep onNext={advanceStep} />;
             case 11: return <ProcessingScreen onFinish={calculatePlan} pace={formData.pace} goal={formData.goal} />;
             case 12: return <FinalResultStep calculations={results} setResults={setResults} onFinish={advanceStep} />;
-            case 13: return <SignUpStep onFinish={() => navigation.replace('Main')} />;
+            case 13: 
+                return <SignUpStep onFinish={() => {
+                    // 1. Instanciamos la función de guardado directamente aquí
+                    useUserStore.getState().saveOnboardingData({
+                        calories: results.calories,
+                        protein: results.protein,
+                        carbs: results.carbs,
+                        fats: results.fats
+                    });
+                    
+                    // 2. Navegamos al Dashboard
+                    navigation.replace('Main');
+                }} />;
             default: return null;
         }
     };
