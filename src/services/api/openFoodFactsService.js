@@ -2,6 +2,7 @@
 // Open Food Facts API v2 (Gratuita y Open Source - Licencia ODbL)
 import { useUserStore } from '../../store/useUserStore';
 import { POPULAR_ARGENTINE_PRODUCTS } from '../../data/argentineProducts';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
 
 export { POPULAR_ARGENTINE_PRODUCTS };
 
@@ -200,105 +201,77 @@ export async function searchOpenFoodFacts(query, externalSignal) {
     seenKeys.add(normalizeFoodKey(item.brand, item.name));
   });
 
-  const offResults = [];
+  const supabaseResults = [];
 
-  // Intentamos consultar primero el nodo de Argentina (ar.openfoodfacts.org) y luego el nodo global (world.openfoodfacts.org)
-  const candidateUrls = [
-    `https://ar.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(cleanQuery)}&search_simple=1&action=process&json=1&page_size=24`,
-    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(cleanQuery)}&search_simple=1&action=process&json=1&page_size=24`,
-  ];
-
-  for (const url of candidateUrls) {
-    if (externalSignal?.aborted) break;
-
+  // TIER 2: Consultar Supabase en la nube (<50ms) si está configurado
+  if (isSupabaseConfigured && supabase && !externalSignal?.aborted) {
     try {
-      const fetchOptions = {
-        headers: {
-          'User-Agent': 'ZenitApp - Android - Version 1.0 (contact@zenitapp.com)',
-          'Accept': 'application/json',
-        },
-      };
+      let queryBuilder = supabase
+        .from('foods')
+        .select('*')
+        .eq('status', 'approved');
 
-      if (externalSignal) {
-        fetchOptions.signal = externalSignal;
-      }
-
-      const response = await fetch(url, fetchOptions);
-
-      // Validar que la respuesta sea exitosa y en formato JSON (para evitar HTML en errores 503)
-      const contentType = response.headers?.get('content-type') || '';
-      if (response.ok && contentType.includes('json')) {
-        const data = await response.json();
-        if (data?.products && Array.isArray(data.products) && data.products.length > 0) {
-          for (const p of data.products) {
-            const rawName = p.product_name_es || p.product_name;
-            if (!rawName || rawName.trim().length < 2) continue;
-
-            const rawBrand = p.brands || 'Marca nacional';
-            const foodKey = normalizeFoodKey(rawBrand, rawName);
-
-            // Si ya tenemos esta variante (en catálogo curado o en resultados anteriores), la descartamos
-            if (seenKeys.has(foodKey)) continue;
-            if (p.code && seenBarcodes.has(p.code)) continue;
-
-            seenKeys.add(foodKey);
-            if (p.code) seenBarcodes.add(p.code);
-
-            const nutriments = p.nutriments || {};
-            const kcal = Math.round(Number(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0));
-            const prot = Number((nutriments.proteins_100g || nutriments.proteins || 0).toFixed(1));
-            const carbs = Number((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0).toFixed(1));
-            const fat = Number((nutriments.fat_100g || nutriments.fat || 0).toFixed(1));
-
-            const servingData = parseServingInfo(p, kcal, prot, carbs, fat);
-
-            const hdImage = toHighResImage(
-              p.selected_images?.front?.display?.es ||
-              p.selected_images?.front?.display?.en ||
-              p.image_front_url ||
-              p.image_front_small_url ||
-              p.image_url ||
-              null
-            );
-
-            offResults.push({
-              id: p.code || `off-${Math.random()}`,
-              name: rawName.trim(),
-              brand: rawBrand.trim(),
-              barcode: p.code || '',
-              servingSize: servingData.servingSizeStr,
-              unitName: servingData.unitName,
-              unitGrams: servingData.unitGrams,
-              defaultPortionType: servingData.defaultPortionType,
-              calories: kcal,
-              protein: prot,
-              carbs: carbs,
-              fats: fat,
-              unitCalories: servingData.unitCalories,
-              unitProtein: servingData.unitProtein,
-              unitCarbs: servingData.unitCarbs,
-              unitFats: servingData.unitFats,
-              image: hdImage,
-              category: p.categories?.split(',')?.[0] || 'Alimento',
-              source: 'open_food_facts',
-            });
-          }
-
-          // Si obtuvimos resultados del primer nodo, no necesitamos consultar el siguiente
-          if (offResults.length > 0) {
-            break;
-          }
+      if (tokens.length <= 1) {
+        queryBuilder = queryBuilder.or(`name.ilike.%${cleanQuery}%,brand.ilike.%${cleanQuery}%,category.ilike.%${cleanQuery}%`);
+      } else {
+        // Multi-palabra (ej: "leche descremada", "coca zero"): cada token debe coincidir en name o brand
+        for (const token of tokens.slice(0, 3)) {
+          queryBuilder = queryBuilder.or(`name.ilike.%${token}%,brand.ilike.%${token}%`);
         }
       }
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        return localMatches;
+
+      const { data } = await queryBuilder.limit(60);
+
+      if (data && Array.isArray(data)) {
+        for (const item of data) {
+          const foodKey = normalizeFoodKey(item.brand, item.name);
+          if (seenKeys.has(foodKey)) continue;
+          if (item.barcode && seenBarcodes.has(item.barcode)) continue;
+
+          seenKeys.add(foodKey);
+          if (item.barcode) seenBarcodes.add(item.barcode);
+
+          supabaseResults.push({
+            id: item.id || item.barcode,
+            barcode: item.barcode || '',
+            name: item.name,
+            brand: item.brand || 'Marca nacional',
+            category: item.category || 'Alimento',
+            servingSize: item.serving_size || `${item.unit_grams || 100}g`,
+            unitName: item.unit_name || '1 porción',
+            unitGrams: Number(item.unit_grams) || 100,
+            defaultPortionType: item.default_portion_type || 'unit',
+            calories: Number(item.calories) || 0,
+            protein: Number(item.protein) || 0,
+            carbs: Number(item.carbs) || 0,
+            fats: Number(item.fats) || 0,
+            unitCalories: item.unit_calories != null ? Number(item.unit_calories) : null,
+            unitProtein: item.unit_protein != null ? Number(item.unit_protein) : null,
+            unitCarbs: item.unit_carbs != null ? Number(item.unit_carbs) : null,
+            unitFats: item.unit_fats != null ? Number(item.unit_fats) : null,
+            image: item.image || null,
+            source: 'supabase',
+          });
+        }
       }
-      // Si falla un nodo (503/timeout), el bucle continúa con el siguiente candidato
+    } catch (err) {
+      // Continuar silenciosamente
     }
   }
 
-  const combined = [...localMatches, ...offResults];
+  // Ordenar inteligentemente por tamaño/presentación de menor a mayor para la misma familia
+  const combined = [...localMatches, ...supabaseResults].sort((a, b) => {
+    // Si comparten marca o raíz de nombre, ordenar por gramaje/volumen
+    const aBrand = (a.brand || '').toLowerCase();
+    const bBrand = (b.brand || '').toLowerCase();
+    if (aBrand && bBrand && aBrand === bBrand) {
+      const aGrams = Number(a.unitGrams) || 0;
+      const bGrams = Number(b.unitGrams) || 0;
+      if (aGrams !== bGrams) return aGrams - bGrams;
+    }
+    return 0;
+  });
+
   if (combined.length > 0) {
     if (SEARCH_CACHE.size >= MAX_CACHE_SIZE) {
       const firstKey = SEARCH_CACHE.keys().next().value;
@@ -311,7 +284,8 @@ export async function searchOpenFoodFacts(query, externalSignal) {
 }
 
 /**
- * Busca un producto por código de barras EAN-13
+ * Busca un producto exclusivamente en la base de datos propietaria Zenit (Local + Supabase)
+ * CERO dependencias externas de Open Food Facts para evitar datos corruptos.
  */
 export async function getProductByBarcode(barcode) {
   if (!barcode) return null;
@@ -325,65 +299,49 @@ export async function getProductByBarcode(barcode) {
     // Si useUserStore aún no está listo o en contexto aislado
   }
 
-  // 2. Revisar en catálogo local argentino
+  // 2. Revisar en catálogo local argentino verificado (0 ms)
   const localMatch = POPULAR_ARGENTINE_PRODUCTS.find((p) => p.barcode === barcode);
   if (localMatch) return localMatch;
 
-  try {
-    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'ZenitApp - React Native - Version 1.0',
-      },
-    });
+  // 3. Revisar en base de datos Supabase en la nube (<50 ms)
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('barcode', barcode)
+        .eq('status', 'approved')
+        .maybeSingle();
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.status === 1 && data.product) {
-        const p = data.product;
-        const nutriments = p.nutriments || {};
-        const kcal = Math.round(Number(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0));
-        const prot = Number((nutriments.proteins_100g || 0).toFixed(1));
-        const carbs = Number((nutriments.carbohydrates_100g || 0).toFixed(1));
-        const fat = Number((nutriments.fat_100g || 0).toFixed(1));
-
-        const servingData = parseServingInfo(p, kcal, prot, carbs, fat);
-
-        const hdImage = toHighResImage(
-          p.selected_images?.front?.display?.es ||
-          p.selected_images?.front?.display?.en ||
-          p.image_front_url ||
-          p.image_front_small_url ||
-          p.image_url ||
-          null
-        );
-
+      if (!error && data) {
         return {
-          id: p.code,
-          name: p.product_name_es || p.product_name || 'Producto Escaneado',
-          brand: p.brands || 'Genérico',
-          barcode: p.code,
-          servingSize: servingData.servingSizeStr,
-          unitName: servingData.unitName,
-          unitGrams: servingData.unitGrams,
-          defaultPortionType: servingData.defaultPortionType,
-          calories: kcal,
-          protein: prot,
-          carbs: carbs,
-          fats: fat,
-          unitCalories: servingData.unitCalories,
-          unitProtein: servingData.unitProtein,
-          unitCarbs: servingData.unitCarbs,
-          unitFats: servingData.unitFats,
-          image: hdImage,
-          category: p.categories?.split(',')?.[0] || 'Alimento',
-          source: 'open_food_facts',
+          id: data.id || data.barcode,
+          barcode: data.barcode,
+          name: data.name,
+          brand: data.brand || 'Marca registrada',
+          category: data.category || 'Alimento',
+          servingSize: data.serving_size || `${data.unit_grams || 100}g`,
+          unitName: data.unit_name || '1 porción',
+          unitGrams: Number(data.unit_grams) || 100,
+          defaultPortionType: data.default_portion_type || 'unit',
+          calories: Number(data.calories) || 0,
+          protein: Number(data.protein) || 0,
+          carbs: Number(data.carbs) || 0,
+          fats: Number(data.fats) || 0,
+          unitCalories: data.unit_calories != null ? Number(data.unit_calories) : null,
+          unitProtein: data.unit_protein != null ? Number(data.unit_protein) : null,
+          unitCarbs: data.unit_carbs != null ? Number(data.unit_carbs) : null,
+          unitFats: data.unit_fats != null ? Number(data.unit_fats) : null,
+          image: data.image || null,
+          source: 'supabase',
         };
       }
+    } catch (e) {
+      // Manejar error silenciosamente
     }
-  } catch (err) {
-    console.log('[OpenFoodFacts] Error consultando código de barras:', err);
   }
 
+  // Si no está registrado en la base oficial, retornamos null para que la UI
+  // permita enviarlo a la cola de moderación del administrador.
   return null;
 }

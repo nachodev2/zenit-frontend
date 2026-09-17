@@ -156,33 +156,70 @@ Documento centralizado para registrar ajustes finos, ideas de pulido visual y de
 
 ---
 
-## 🗄️ Base de Datos, Motor de Búsqueda y Catálogo de Alimentos (Roadmap Prioritario)
+## 🗄️ Base de Datos, Motor de Búsqueda y Catálogo de Alimentos (Supabase & Cloud)
 
-### 📌 Pendientes / Por realizar
+### ✅ Completadas (Fase 1 - Catálogo Maestro `foods` para FoodScreen)
 - [x] **0. Carga Masiva y Ampliación del Catálogo de Alimentos Argentinos (`POPULAR_ARGENTINE_PRODUCTS`)**:
-  - Incorporar una selección exhaustiva y curada de más de 105 productos nacionales habituales (lácteos *La Serenísima* / *Ilolay*, galletitas *Granix* / *Traviata* / *Pepitos* / *Don Satur* / *Rumba*, pastas *Lucchetti* / *Matarazzo*, alfajores *Havanna* / *Jorgito* / *Guaymallén*, bebidas, snacks *Lays* / *Doritos*, proteínas, etc.).
-  - Sin repetirse (deduplicados por código de barras real EAN-13).
-  - Fotos de calidad con estilo e-commerce uniforme (producto nítido, sin fondo invasivo o PNG recortado).
-  - Normalización precisa de porciones: tipificar si se consume por unidad/envase (`1 lata`, `1 pote`, `1 unidad`, `1 alfajor`, `1 empanada`) o pesado en báscula (`100g`).
+  - Incorporación de 107 productos nacionales habituales (La Serenísima, Ilolay, Granix, Traviata, Don Satur, Lucchetti, Matarazzo, Havanna, Jorgito, Guaymallén, Monster, etc.).
+  - Deduplicados con códigos de barras reales EAN-13.
+  - Normalización precisa de porciones (`defaultPortionType: 'unit' | 'grams'`).
 - [x] **1. Estandarización y Calidad Visual de Imágenes**:
-  - Unificar todas las fotos de productos para que tengan el mismo estilo: alta calidad, sin fondo invasivo (PNG silueteado / fondo neutro recortado) y visualmente nítidas.
-  - Eliminar fotos de baja calidad, borrosas o con fondos dispares provenientes de Open Food Facts mediante curación local y fallbacks limpios estilo e-commerce.
+  - Fotos de calidad e-commerce uniforme (`resizeMode="contain"` con fondo neutro sin mutilación).
+  - Conversión automática a alta resolución `.400.jpg` (`toHighResImage`).
 - [x] **2. Búsqueda Flexible y Tolerante a Errores (Fuzzy & Token Search)**:
-  - Búsqueda tolerante por palabras clave sueltas: si el usuario escribe *"Panerita"*, debe encontrar *"La Panerita"*; si escribe *"Serenisima"*, encontrar *"La Serenísima"*.
-  - Normalización de tildes/acentos, eliminación de stopwords y artículos (*el, la, los, de*).
-  - Algoritmo de ponderación (match en nombre > match en marca > match en categoría).
+  - Normalización de tildes/acentos, eliminación de stopwords (`el`, `la`, `los`, `de`, `del`).
+  - Búsqueda por palabras clave independientes del orden.
 - [x] **3. Optimización Drástica de Velocidad de Búsqueda**:
-  - Implementar debounce optimizado (280ms) para no saturar el hilo principal ni la red en cada letra escrita.
-  - Cancelación de peticiones obsoletas con `AbortController` al continuar tipeando para evitar respuestas desfasadas y cuelgues.
-  - Caché local en memoria (`Map`) para consultas recurrentes a 0ms.
-  - Priorización instantánea (0ms) de resultados locales indexados mientras Open Food Facts resuelve en segundo plano.
+  - Debounce optimizado (280ms) y cancelación HTTP con `AbortController`.
+  - Caché local en memoria (`SEARCH_CACHE`) para consultas en 0ms.
 - [x] **4. Estado Vacío Amigable (Empty State)**:
-  - Mostrar la leyenda oficial: *"No hay productos disponibles de acuerdo a tu búsqueda"*.
-  - Diseño Zenit limpio con icono ilustrativo, sugerencias de búsqueda y botón directo *"Dar de alta este producto"* (con degradado Zenit oficial) que autocompleta el nombre del alimento en la modal de creación.
-- [ ] **5. Carga Comunitaria y Arquitectura para Panel de Administración**:
-  - Flujo ágil para que los usuarios puedan registrar alimentos que no están en la base de datos.
-  - Estructuración de estados de producto en base de datos (`status: 'approved' | 'pending' | 'rejected'`, `submittedBy`).
-  - Preparación de la arquitectura de autenticación y roles (`role: 'admin'`) para futuro panel de administración donde el administrador pueda auditar, aceptar o rechazar solicitudes de incorporación a la base de datos oficial.
+  - Leyenda oficial: *"No hay productos disponibles de acuerdo a tu búsqueda"*.
+  - Botón CTA *"Dar de alta este producto"* con degradado Zenit oficial y autocompletado del nombre.
+- [x] **5. Arquitectura de Cliente Supabase (`src/services/supabaseClient.js`)**:
+  - Cliente seguro con validación de entorno `isSupabaseConfigured` y fallback tolerante a fallos.
+- [x] **6. Arquitectura 100% Propietaria Zenit (Eliminación Completa de Open Food Facts)**:
+  - Eliminación total de consultas externas a Open Food Facts en búsqueda y escáner para erradicar fotos caseras, envases vacíos y productos desordenados o extranjeros.
+  - El buscador responde únicamente desde catálogo local verificado (Tier 1) y Supabase privado (Tier 2).
+  - Ordenamiento inteligente de presentaciones por volumen/gramaje ascendente para una misma marca/producto (ej: Coca-Cola de 220ml mini lata a 3L familiar).
+  - Códigos no encontrados retornan `null` y abren el formulario de registro para enviar a la cola de moderación del administrador (`status: 'pending'`).
+- [x] **7. Cosecha Masiva de Góndolas Argentinas con Fotos de Estudio HD (`scripts/scrapeSupermarketsAr.js`)**:
+  - Crawler exhaustivo conectado a las góndolas de Día Online / VTEX (Gaseosas, Aguas, Cervezas, Lácteos, Quesos, Galletitas, Golosinas, Pastas, etc.).
+  - Motor de resolución bromatológica calibrado con precedencia estricta para evitar falsos positivos.
+  - **1.329 alimentos de consumo nacional masivo** con fotos oficiales de estudio sobre fondo blanco impoluto y códigos EAN-13 listos en `scripts/supermarkets_argentina_seed.sql`.
+- [x] **8. Familia Completa de Coca-Cola Calibrada (220ml a 3L)**:
+  - Incorporación en catálogo local de todas las presentaciones comerciales de Coca-Cola Sabor Original (220ml, 354ml, 500ml, 600ml, 1.25L, 1.5L, 2.25L, 3L) y Coca-Cola Sin Azúcar (220ml, 354ml, 500ml, 600ml, 1.5L, 2.25L) con fotos de estudio HD y escalado matemático exacto de macros.
+- [x] **9. Renovación de Frescos & Orgánicos con Fotos de Estudio**:
+  - Reemplazo de fotos genéricas con fondo de Unsplash en el catálogo local por packshots oficiales de estudio sobre fondo blanco para alimentos naturales (Banana Fresca, Pechuga de Pollo Granja, Huevos Blancos Maple, Palta Hass, Manzana Roja, Tomate Redondo, Bife de Chorizo, Carne Picada Magra, Filet de Merluza, Medialunas de Manteca).
+- [x] **10. Cosecha Fitness, Orgánicos e Importados de Jumbo & Carrefour (`scripts/crawlJumboCarrefour.js`)**:
+  - Integración de los catálogos premium de Jumbo y Carrefour (Suplementos Whey, Creatina, Barras Proteicas, Leches Vegetales Silk/NotCo, Línea Sin TACC, Carrefour Bio, Chocolates Lindt, Pastas Barilla).
+  - Deduplicación estricta contra catálogo local y Día Online: **389 productos nuevos únicos** (alcanzando 1.718 alimentos de supermercado con fotos HD de estudio en `scripts/jumbo_carrefour_seed.sql`).
+- [x] **11. Catálogo Maestro Consolidado Único de Supermercados (`scripts/buildMasterCatalogSeed.js` ➔ `scripts/zenit_master_foods_seed.sql`)**:
+  - Unificación integral de todas las fuentes en un **único archivo SQL maestro** listo para inyectar en Supabase en un solo clic:
+    - **119** productos locales calibrados de oro (Coca-Cola completa, Serenísima, Havanna, Monster, etc.).
+    - **1.306** productos de Día Online.
+    - **1.698** productos de Jumbo Argentina (Almacén, Carnes, Pescados, Quesos, Lácteos, Congelados, Frutas, Pastas Frescas, Fitness).
+    - **500** productos de Carrefour Argentina (Bio, Sin Gluten, Desayuno, etc.).
+  - **3.611 productos únicos de alimentos y bebidas** con fotos de estudio HD sobre fondo blanco puro, porciones bromatológicas calibradas y filtro estricto de higiene (cero no comestibles, cero duplicados).
+  - Buscador PostgREST optimizado para búsquedas multi-término (`"coca zero"`, `"leche descremada"`).
+
+---
+
+### 📌 Pendientes / Base de Datos a Futuro (Fase 2 - Arquitectura Maestra)
+- [ ] **1. Tabla `profiles` (Usuarios & Metas Nutricionales)**:
+  - Sincronización en la nube de perfil, sexo biológico, edad, altura, peso actual, peso meta y macros diarios calculados (`calories`, `protein`, `carbs`, `fats`).
+- [ ] **2. Tabla `daily_meals` (Registro Diario de Ingesta)**:
+  - Almacenar en la nube qué comió el usuario cada día, fecha/hora, tipo de comida (desayuno, almuerzo, merienda, cena), porción consumida y referencia `food_id`.
+- [ ] **3. Tablas `custom_recipes` y `recipe_ingredients` (Recetario Casero)**:
+  - Guardar recetas compuestas creadas por el usuario desde el carro de compras de `FoodScreen` y relacionar sus ingredientes de catálogo.
+- [ ] **4. Tabla `weight_logs` (Historial de Pesaje & Bioimpedancia)**:
+  - Persistencia de los 14 parámetros corporales del pesaje semanal registrados en `WeightTrackerScreen.js`.
+- [ ] **5. Tabla `water_logs` (Historial de Hidratación)**:
+  - Registro histórico del consumo de agua diario y cumplimiento de metas.
+- [ ] **6. Carga Comunitaria & Panel de Administración (Moderación)**:
+  - Flujo para que productos creados por usuarios suban con `status: 'pending'`.
+  - Panel o módulo de administración con rol `admin` para revisar, aprobar o rechazar alimentos antes de que sean públicos.
+- [ ] **7. Estrategia Offline-First & Sincronización Bidireccional**:
+  - Capa de sincronización automática en background entre Zustand / AsyncStorage y Supabase al recuperar conectividad a internet.
 
 ---
 
