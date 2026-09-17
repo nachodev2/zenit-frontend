@@ -146,6 +146,25 @@ function resolveMacros(name, brand, category) {
   return { kcal: 220, prot: 6.0, carbs: 30.0, fat: 8.0, cat: category || 'Alimento' };
 }
 
+const NON_FOOD_KEYWORDS = [
+  'depiladora', 'afeitadora', 'shampoo', 'acondicionador', 'jabon', 'jabón',
+  'lavandina', 'detergente', 'suavizante', 'desodorante', 'dentifrico', 'dentífrico',
+  'cepillo', 'insecticida', 'pañal', 'pañales', 'toalla femenina', 'toallitas',
+  'tampon', 'tampón', 'higienico', 'higiénico', 'limpiador', 'trapo', 'esponja',
+  'dosificador', 'perfume', 'colonia', 'tintura', 'algodon', 'algodón', 'preservativo',
+  'crema facial', 'crema corporal', 'protector solar', 'bronceador', 'juguete', 'pila ',
+  'dog chow', 'cat chow', 'catchow', 'dogchow', 'whiskas', 'pedigree', 'felix',
+  'gati', 'purina', 'temptations', 'pets class', 'pet\'s class', 'eukanuba', 'royal canin', 'pro plan',
+  'mascota', 'mascotas', 'canino', 'felino'
+];
+
+function isFood(name, brand) {
+  const lower = `${brand || ''} ${name || ''}`.toLowerCase();
+  if (lower.includes('perro') && !lower.includes('vino')) return false;
+  if (lower.includes('gato') && !lower.includes('gatorade') && !lower.includes('rigatoni')) return false;
+  return !NON_FOOD_KEYWORDS.some((w) => lower.includes(w));
+}
+
 async function run() {
   console.log('🛒 Iniciando Cosecha de Jumbo & Carrefour (Fitness, Orgánicos, Frescos e Importados)...');
 
@@ -212,7 +231,7 @@ async function run() {
         const rawName = (item.productName || '').trim();
         const brand = (item.brand || '').trim() || source.name;
 
-        if (!ean || ean.length < 8 || seenBarcodes.has(ean) || !rawName || images.length === 0) {
+        if (!ean || ean.length < 8 || seenBarcodes.has(ean) || !rawName || images.length === 0 || !isFood(rawName, brand)) {
           continue;
         }
 

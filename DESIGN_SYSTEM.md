@@ -60,6 +60,20 @@ export const ZENIT_GRADIENT = ['#DC2626', '#F97316'];
 - **Textos Generales y Subtítulos:** Estrictamente **Negro** (`#0F172A` / `#475569`) en Modo Claro o **Blanco** (`#FFFFFF` / `#CBD5E1`) en Modo Oscuro. Prohibido usar textos cobrizos, marrones o tonos intermedios sobre las cards.
 - **Unidades, Placeholders y Fechas:** `#94A3B8` en claro, `#64748B` en oscuro.
 
+### 🚫 Regla de Oro: Prohibición Estricta del Efecto Arcoíris y Minimalismo de Información Justa (PedidosYa / Rappi Standard)
+1. **Cero Colores Aleatorios ("Efecto Arcoíris Prohibido"):**
+   - Queda terminantemente prohibido inventar o asignar paletas de colores temáticos arbitrarios (rojo, verde, celeste, rosa, morado, azul pastel) para distinguir categorías, tarjetas de alimentos o módulos.
+   - Zenit es blanco puro (`#FFFFFF`), superficies neutras suaves (`#F1F5F9` / `#F8FAFC`), texto de alto contraste (`#0F172A`) y acentuado **únicamente** por el Fuego Zenit (`#EA580C` / `#F97316`).
+   - Las tarjetas de categorías deben tener siempre fondo neutro claro (`#F1F5F9`) sin bordes de colores chillones. La personalidad la da el producto y la imagen, no bordes artificiales.
+2. **Ley de Información Justa y Necesaria (Apta para Todo Público y Personas Mayores):**
+   - Prohibido agregar textos de relleno o micro-etiquetas que saturen visualmente (como badges de *"Proteínas"*, *"Huerta"*, *"Despensa"* o pies de tarjeta como *"Ver góndola"*).
+   - Menos es más: únicamente la foto representativa limpia y el título directo de la categoría o alimento (ej. *"Frutas y Verduras"*, *"Lácteos y Quesos"*, *"Almacén"*).
+   - Diseño intuitivo que cualquier usuario promedio o persona mayor pueda comprender al instante sin esfuerzo mental.
+3. **Estructura Canónica de Navegación de Catálogo:**
+   - Grilla limpia de 3 columnas para categorías destacadas en píldoras o cajas neutras.
+   - Mostrar de entrada las 6 categorías más buscadas (2 filas de 3) con botón interactivo central *"Más categorías  ⌵"* para desplegar el resto.
+   - Debajo de las categorías: Carruseles horizontales temáticos (*"Alimentos Esenciales"*, *"Fitness & Proteínas"*, *"Populares & Destacados"*).
+
 ---
 
 ## 3. ✍️ Sistema Tipográfico & Jerarquía Numérica

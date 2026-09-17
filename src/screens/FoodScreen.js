@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   Modal,
   KeyboardAvoidingView,
   Platform,
@@ -32,8 +33,21 @@ import {
   BookOpen,
   Trash2,
   ChevronRight,
+  ChevronLeft,
+  ChevronDown,
+  ChevronUp,
+  ArrowLeft,
   Sparkles,
   ChefHat,
+  Beef,
+  Milk,
+  Apple,
+  Package,
+  Cookie,
+  CupSoda,
+  Snowflake,
+  Dumbbell,
+  Store,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -42,13 +56,233 @@ import { useUserStore } from '../store/useUserStore';
 import { ZENIT_GRADIENT } from '../constants/theme';
 import { ZenitModalAlert } from '../components/ui/ZenitModalAlert';
 import {
-  POPULAR_ARGENTINE_PRODUCTS,
-  searchOpenFoodFacts,
+  MARKET_SECTIONS,
+  fetchProductsByCategory,
+  fetchCuratedCarousels,
+  searchFoodCatalog,
   findLocalMatches,
-} from '../services/api/openFoodFactsService';
+  isPlaceholderImage,
+  getQueryTokens,
+  matchesQueryTokens,
+} from '../services/api/foodCatalogService';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 44) / 2;
+// Ancho para la grilla de 3 columnas de categorías estilo PedidosYa / Rappi
+const CATEGORY_COLUMN_WIDTH = Math.floor((width - 32 - 16) / 3);
+
+/**
+ * Tarjeta de Categoría Minimalista estilo PedidosYa / Rappi (3 Columnas)
+ * Contenedor neutro suave #F1F5F9, packshot limpio de estudio y título directo sin relleno.
+ */
+const MinimalCategoryCard = React.memo(function MinimalCategoryCard({ section, onPress, columnWidth }) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={() => onPress(section)}
+      style={{
+        width: columnWidth,
+        alignItems: 'center',
+        marginBottom: 16,
+      }}
+    >
+      <View
+        style={{
+          width: '100%',
+          height: 92,
+          backgroundColor: '#F1F5F9',
+          borderRadius: 20,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 8,
+          overflow: 'hidden',
+        }}
+      >
+        {section.image ? (
+          <Image
+            source={{ uri: section.image }}
+            style={{ width: '82%', height: '82%' }}
+            resizeMode="contain"
+          />
+        ) : (
+          <Package size={28} color="#94A3B8" />
+        )}
+      </View>
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: '700',
+          color: '#0F172A',
+          textAlign: 'center',
+          marginTop: 6,
+          lineHeight: 15,
+        }}
+        numberOfLines={2}
+      >
+        {section.title}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
+/**
+ * Tarjeta compacta para Carruseles Horizontales de Alimentos
+ */
+const CarouselProductCard = React.memo(function CarouselProductCard({ item, onPress }) {
+  const displayKcal =
+    item.defaultPortionType === 'unit' && item.unitCalories != null
+      ? item.unitCalories
+      : item.calories;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onPress}
+      style={{
+        width: 140,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+        justifyContent: 'space-between',
+      }}
+    >
+      {/* IMAGEN DE ESTUDIO */}
+      <View
+        style={{
+          width: '100%',
+          height: 96,
+          backgroundColor: '#F8FAFC',
+          borderRadius: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          marginBottom: 8,
+        }}
+      >
+        {item.image ? (
+          <Image
+            source={{ uri: item.image }}
+            style={{ width: '85%', height: '85%' }}
+            resizeMode="contain"
+          />
+        ) : (
+          <Drumstick size={28} color="#CBD5E1" />
+        )}
+      </View>
+
+      {/* INFORMACIÓN DEL PRODUCTO */}
+      <View style={{ flex: 1, justifyContent: 'space-between' }}>
+        <View>
+          {item.brand ? (
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '800',
+                color: '#94A3B8',
+                textTransform: 'uppercase',
+                letterSpacing: 0.3,
+                marginBottom: 2,
+              }}
+              numberOfLines={1}
+            >
+              {item.brand}
+            </Text>
+          ) : null}
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '700',
+              color: '#0F172A',
+              lineHeight: 16,
+            }}
+            numberOfLines={2}
+          >
+            {item.name}
+          </Text>
+        </View>
+
+        {/* PASTILLA DE MACROS LIMPIA */}
+        <View
+          style={{
+            marginTop: 8,
+            backgroundColor: '#F1F5F9',
+            borderRadius: 8,
+            paddingVertical: 4,
+            paddingHorizontal: 6,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '800', color: '#0F172A' }}>
+            {displayKcal} kcal
+          </Text>
+          {item.protein > 0 && (
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#EA580C' }}>
+              {item.protein}g P
+            </Text>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+/**
+ * Carrusel Horizontal de Alimentos Temático
+ */
+const HorizontalProductCarousel = React.memo(function HorizontalProductCarousel({
+  title,
+  subtitle,
+  products,
+  onOpenProduct,
+}) {
+  if (!products || products.length === 0) return null;
+
+  return (
+    <View style={{ marginBottom: 24 }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: '800',
+            color: '#0F172A',
+            letterSpacing: -0.3,
+          }}
+        >
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 2 }}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {products.map((item) => (
+          <CarouselProductCard
+            key={item.barcode || item.id || item.name}
+            item={item}
+            onPress={() => onOpenProduct(item)}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+});
 
 // =================================================================
 // COMPONENTES CANÓNICOS DEL ZENIT DESIGN SYSTEM (DESIGN_SYSTEM.md)
@@ -317,10 +551,10 @@ function ZenitPrimaryButton({ onPress, title, icon: Icon, style }) {
 /**
  * 5. Thumbnail de Producto Limpio (Packshot completo sin cortes ni deformación)
  */
-function ProductThumbnail({ uri, style, iconSize = 28, resizeMode = 'contain' }) {
+const ProductThumbnail = React.memo(function ProductThumbnail({ uri, style, iconSize = 28, resizeMode = 'contain' }) {
   const [hasError, setHasError] = useState(false);
 
-  if (!uri || hasError) {
+  if (!uri || hasError || isPlaceholderImage(uri)) {
     return (
       <View
         style={[
@@ -360,7 +594,109 @@ function ProductThumbnail({ uri, style, iconSize = 28, resizeMode = 'contain' })
       />
     </View>
   );
-}
+});
+
+/**
+ * 6. Tarjeta de Producto Canónica Ultra Optimizada (Memoizada para 60 FPS)
+ */
+const ProductCard = React.memo(function ProductCard({
+  item,
+  isFav,
+  onOpenDetail,
+  onToggleFavorite,
+  columnWidth,
+}) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={() => onOpenDetail(item)}
+      style={{
+        width: columnWidth,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 22,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 2,
+      }}
+    >
+      {/* FOTO CON CORAZÓN SUTIL */}
+      <View style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
+        <ProductThumbnail
+          uri={item.image || item.imageUri}
+          style={{
+            width: '100%',
+            height: 124,
+            borderRadius: 16,
+          }}
+        />
+
+        {/* ACCIÓN SUTIL CORAZÓN */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onToggleFavorite(item);
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            backgroundColor: 'rgba(255, 255, 255, 0.92)',
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+          }}
+        >
+          <Heart
+            size={16}
+            color={isFav ? '#E11D48' : '#64748B'}
+            fill={isFav ? '#E11D48' : 'transparent'}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* INFORMACIÓN DEL PRODUCTO: SOLO MARCA Y NOMBRE */}
+      <View style={{ marginTop: 10, paddingHorizontal: 2 }}>
+        <Text
+          style={{
+            fontSize: 10,
+            fontWeight: '800',
+            color: '#94A3B8',
+            textTransform: 'uppercase',
+            letterSpacing: 0.6,
+          }}
+          numberOfLines={1}
+        >
+          {item.brand || 'Alimento'}
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: '800',
+            color: '#0F172A',
+            marginTop: 2,
+            lineHeight: 17,
+          }}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 // =================================================================
 // PANTALLA PRINCIPAL: FOODSCREEN
@@ -389,8 +725,16 @@ export default function FoodScreen({ navigation }) {
   // Estados UI
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'recipes' | 'favorites'
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState(POPULAR_ARGENTINE_PRODUCTS);
+  const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Estados de navegación por secciones de góndola estilo PedidosYa Market
+  const [selectedSection, setSelectedSection] = useState(null); // null = grilla de secciones, o objeto sección
+  const [sectionProducts, setSectionProducts] = useState([]);
+  const [isLoadingSection, setIsLoadingSection] = useState(false);
+  const [sectionFilter, setSectionFilter] = useState('');
+  const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(false);
+  const [carousels, setCarousels] = useState({ essentials: [], fitness: [], featured: [] });
 
   // Modal de Detalle de Producto al tocar la card
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -422,16 +766,29 @@ export default function FoodScreen({ navigation }) {
     type: 'success',
   });
 
+  // Carga asíncrona en segundo plano de los 3 carruseles curados en memoria (0ms lag en cambio de tab)
+  useEffect(() => {
+    let isMounted = true;
+    fetchCuratedCarousels().then((data) => {
+      if (isMounted && data) {
+        setCarousels(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Búsqueda inteligente de alto rendimiento en dos fases (0ms local + red cancelable)
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (!trimmed) {
-      setSearchResults([...customProducts, ...POPULAR_ARGENTINE_PRODUCTS]);
+      setSearchResults([]);
       setIsSearching(false);
       return;
     }
 
-    // 1. Fase inmediata (0 ms): filtrar al instante el catálogo local y productos del usuario
+    // 1. Fase inmediata (0 ms): filtrar al instante productos creados por el usuario
     const instantMatches = findLocalMatches(trimmed, customProducts);
     setSearchResults(instantMatches);
     setIsSearching(true);
@@ -440,7 +797,7 @@ export default function FoodScreen({ navigation }) {
     const controller = new AbortController();
     const timeout = setTimeout(async () => {
       try {
-        const offResults = await searchOpenFoodFacts(trimmed, controller.signal);
+        const offResults = await searchFoodCatalog(trimmed, controller.signal);
         if (!controller.signal.aborted) {
           const freshLocal = findLocalMatches(trimmed, customProducts);
           const seen = new Set(
@@ -465,6 +822,37 @@ export default function FoodScreen({ navigation }) {
       clearTimeout(timeout);
     };
   }, [searchQuery, customProducts]);
+
+  // Abrir sección de góndola bajo demanda
+  const handleSelectSection = useCallback(async (section) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedSection(section);
+    setSectionFilter('');
+    setIsLoadingSection(true);
+    try {
+      const products = await fetchProductsByCategory(section.id);
+      setSectionProducts(products);
+    } catch (e) {
+      setSectionProducts([]);
+    } finally {
+      setIsLoadingSection(false);
+    }
+  }, []);
+
+  // Volver a la grilla de secciones
+  const handleBackToSections = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedSection(null);
+    setSectionProducts([]);
+    setSectionFilter('');
+  }, []);
+
+  // Filtro rápido de productos dentro de la sección activa
+  const filteredSectionProducts = useMemo(() => {
+    if (!sectionFilter.trim()) return sectionProducts;
+    const tokens = getQueryTokens(sectionFilter);
+    return sectionProducts.filter((item) => matchesQueryTokens(item, tokens));
+  }, [sectionProducts, sectionFilter]);
 
   // Cálculos dinámicos del producto seleccionado (por unidad / lata O por gramos)
   const calculatedMacros = useMemo(() => {
@@ -495,39 +883,60 @@ export default function FoodScreen({ navigation }) {
         carbs: Number((baseUnitCarbs * count).toFixed(1)),
         fats: Number((baseUnitFats * count).toFixed(1)),
       };
-    } else {
-      const baseCals = Number(selectedProduct.calories) || 0;
-      const baseProt = Number(selectedProduct.protein) || 0;
-      const baseCarbs = Number(selectedProduct.carbs) || 0;
-      const baseFats = Number(selectedProduct.fats) || 0;
-      const ratio = (productGrams || 100) / 100;
-
-      return {
-        calories: Math.round(baseCals * ratio),
-        protein: Number((baseProt * ratio).toFixed(1)),
-        carbs: Number((baseCarbs * ratio).toFixed(1)),
-        fats: Number((baseFats * ratio).toFixed(1)),
-      };
     }
+
+    const ratio = Math.max(1, productGrams) / 100;
+    return {
+      calories: Math.round((Number(selectedProduct.calories) || 0) * ratio),
+      protein: Number(((Number(selectedProduct.protein) || 0) * ratio).toFixed(1)),
+      carbs: Number(((Number(selectedProduct.carbs) || 0) * ratio).toFixed(1)),
+      fats: Number(((Number(selectedProduct.fats) || 0) * ratio).toFixed(1)),
+    };
   }, [selectedProduct, portionMode, unitCount, productGrams]);
 
-  // Cálculos dinámicos de los totales del carrito de recetas
+  // Cálculos totales del carro de recetas
   const cartTotals = useMemo(() => {
-    const totalCals = recipeCart.reduce((acc, item) => acc + (Number(item.calories) || 0), 0);
-    const totalProt = recipeCart.reduce((acc, item) => acc + (Number(item.protein) || 0), 0);
-    const totalCarbs = recipeCart.reduce((acc, item) => acc + (Number(item.carbs) || 0), 0);
-    const totalFats = recipeCart.reduce((acc, item) => acc + (Number(item.fats) || 0), 0);
+    let totalCals = 0;
+    let totalProt = 0;
+    let totalCarbs = 0;
+    let totalFats = 0;
+
+    for (const item of recipeCart) {
+      const g = item.grams || 100;
+      const ratio = g / 100;
+      totalCals += (Number(item.calories) || 0) * ratio;
+      totalProt += (Number(item.protein) || 0) * ratio;
+      totalCarbs += (Number(item.carbs) || 0) * ratio;
+      totalFats += (Number(item.fats) || 0) * ratio;
+    }
 
     return {
-      calories: totalCals,
+      calories: Math.round(totalCals),
       protein: Number(totalProt.toFixed(1)),
       carbs: Number(totalCarbs.toFixed(1)),
       fats: Number(totalFats.toFixed(1)),
     };
   }, [recipeCart]);
 
+  // Set de favoritos para lookup instantáneo O(1)
+  const favoritesSet = useMemo(() => {
+    const set = new Set();
+    (favorites || []).forEach((f) => {
+      if (f?.name) set.add(f.name.toLowerCase().trim());
+    });
+    return set;
+  }, [favorites]);
+
+  // Limpiar búsqueda en 0ms
+  const handleClearSearch = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsSearching(false);
+  }, []);
+
   // Abrir detalle del producto
-  const handleOpenProductDetail = (product) => {
+  const handleOpenProductDetail = useCallback((product) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedProduct(product);
 
@@ -535,7 +944,192 @@ export default function FoodScreen({ navigation }) {
     setPortionMode(preferUnit ? 'unit' : 'grams');
     setUnitCount(1);
     setProductGrams(product.unitGrams || 100);
-  };
+  }, []);
+
+  // Renderizador memoizado de cada tarjeta
+  const renderProductItem = useCallback(
+    ({ item }) => {
+      const isFav = favoritesSet.has((item.name || '').toLowerCase().trim());
+      return (
+        <ProductCard
+          item={item}
+          isFav={isFav}
+          onOpenDetail={handleOpenProductDetail}
+          onToggleFavorite={toggleFavorite}
+          columnWidth={COLUMN_WIDTH}
+        />
+      );
+    },
+    [favoritesSet, handleOpenProductDetail, toggleFavorite]
+  );
+
+  // Extractor de claves seguro y rápido
+  const keyExtractor = useCallback((item, index) => {
+    return String(item.id || item.barcode || `${item.name}-${item.brand}-${index}`);
+  }, []);
+
+  // Estado vacío o spinner de carga para FlatList
+  const renderEmptyOrLoading = useMemo(() => {
+    if (isSearching && searchResults.length === 0) {
+      return (
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 24,
+            paddingVertical: 36,
+            paddingHorizontal: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: '#F1F5F9',
+            shadowColor: '#0F172A',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.03,
+            shadowRadius: 8,
+            elevation: 1,
+            marginTop: 10,
+          }}
+        >
+          <ActivityIndicator size="large" color="#EA580C" />
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: '800',
+              color: '#0F172A',
+              marginTop: 14,
+              textAlign: 'center',
+            }}
+          >
+            Buscando en la base de datos...
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: '#64748B',
+              marginTop: 4,
+              textAlign: 'center',
+            }}
+          >
+            Consultando catálogo local y marcas argentinas
+          </Text>
+        </View>
+      );
+    }
+
+    if (!isSearching && searchResults.length === 0 && searchQuery.trim().length > 0) {
+      return (
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 24,
+            paddingVertical: 36,
+            paddingHorizontal: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: '#F1F5F9',
+            shadowColor: '#0F172A',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.04,
+            shadowRadius: 12,
+            elevation: 2,
+            marginTop: 10,
+          }}
+        >
+          <View
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: '#F8FAFC',
+              borderWidth: 1,
+              borderColor: '#E2E8F0',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+            }}
+          >
+            <Search size={28} color="#94A3B8" />
+          </View>
+
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '900',
+              color: '#0F172A',
+              textAlign: 'center',
+              lineHeight: 22,
+            }}
+          >
+            No hay productos disponibles de acuerdo a tu búsqueda
+          </Text>
+
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: '#64748B',
+              textAlign: 'center',
+              marginTop: 8,
+              lineHeight: 19,
+              maxWidth: 300,
+            }}
+          >
+            ¿No encontrás "{searchQuery.trim()}"? Podés darlo de alta manualmente con sus macros en 1 minuto.
+          </Text>
+
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setNewProdName(searchQuery.trim());
+              setIsCreateProductModalOpen(true);
+            }}
+            style={{
+              marginTop: 22,
+              width: '100%',
+              borderRadius: 18,
+              overflow: 'hidden',
+              shadowColor: '#EA580C',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <LinearGradient
+              colors={ZENIT_GRADIENT}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                paddingVertical: 14,
+                paddingHorizontal: 20,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <Plus size={18} color="#FFFFFF" strokeWidth={2.8} />
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: '800',
+                  color: '#FFFFFF',
+                  letterSpacing: 0.2,
+                }}
+              >
+                Dar de alta este producto
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return null;
+  }, [isSearching, searchResults.length, searchQuery]);
 
   // Alternar modo de porción con animación fluida y cero tick
   const handleSwitchPortionMode = (mode) => {
@@ -883,26 +1477,12 @@ export default function FoodScreen({ navigation }) {
         </View>
 
         {/* ======================================================= */}
-        {/* CONTENIDO SCROLL PRINCIPAL                              */}
+        {/* PESTAÑA 1: PRODUCTOS / SECCIONES ESTILO PEDIDOSYA MARKET*/}
         {/* ======================================================= */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: recipeCart.length > 0 ? 175 : 110 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* ======================================================= */}
-          {/* PESTAÑA 1: PRODUCTOS                                    */}
-          {/* ======================================================= */}
-          {activeTab === 'products' && (
-            <View>
-              {/* SMART INSIGHT PILL CANÓNICA */}
-              <SmartInsightCapsule
-                text="Tocá cualquier alimento para ver sus macros o sumarlo a una receta casera."
-                style={{ marginBottom: 14 }}
-              />
-
-              {/* BUSCADOR ESTILO APPLE */}
+        {activeTab === 'products' && (
+          <View style={{ flex: 1 }}>
+            {/* BUSCADOR ESTILO APPLE FIJO ARRIBA */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6, backgroundColor: '#F8FAFC' }}>
               <View
                 style={{
                   flexDirection: 'row',
@@ -910,21 +1490,21 @@ export default function FoodScreen({ navigation }) {
                   backgroundColor: '#FFFFFF',
                   borderRadius: 18,
                   paddingHorizontal: 14,
-                  paddingVertical: 11,
+                  paddingVertical: 10,
                   borderWidth: 1,
                   borderColor: '#F1F5F9',
-                  marginBottom: 16,
                   shadowColor: '#0F172A',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.03,
                   shadowRadius: 6,
+                  elevation: 1,
                 }}
               >
                 <Search size={18} color="#94A3B8" />
                 <TextInput
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholder="Buscar Monster, pollo, yogur, avena..."
+                  placeholder="Buscar en todo el catálogo de supermercado..."
                   placeholderTextColor="#94A3B8"
                   style={{
                     flex: 1,
@@ -933,276 +1513,309 @@ export default function FoodScreen({ navigation }) {
                     color: '#0F172A',
                     fontWeight: '700',
                   }}
-                  clearButtonMode="while-editing"
+                  clearButtonMode="never"
+                  returnKeyType="search"
+                  autoCorrect={false}
                 />
                 {isSearching ? (
                   <ActivityIndicator size="small" color="#EA580C" style={{ marginLeft: 6 }} />
                 ) : searchQuery.length > 0 ? (
-                  <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                  <TouchableOpacity onPress={handleClearSearch} style={{ padding: 4 }}>
                     <X size={16} color="#94A3B8" />
                   </TouchableOpacity>
                 ) : null}
               </View>
+            </View>
 
-              {/* CUADRÍCULA DE PRODUCTOS (SOLO FOTO Y NOMBRE, SIN MACROS) O ESTADO VACÍO */}
-              {isSearching && searchResults.length === 0 ? (
+            {/* CASO A: BUSCADOR GLOBAL ACTIVO (CUANDO EL USUARIO TIKEA TEXTO) */}
+            {searchQuery.trim().length > 0 && (
+              <FlatList
+                data={searchResults}
+                renderItem={renderProductItem}
+                keyExtractor={keyExtractor}
+                numColumns={2}
+                columnWrapperStyle={{
+                  justifyContent: 'space-between',
+                  paddingHorizontal: 16,
+                  marginBottom: 12,
+                }}
+                contentContainerStyle={{
+                  paddingTop: 6,
+                  paddingBottom: recipeCart.length > 0 ? 175 : 110,
+                }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                initialNumToRender={8}
+                maxToRenderPerBatch={8}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+                ListHeaderComponent={
+                  <View style={{ paddingHorizontal: 16, marginBottom: 12, marginTop: 4 }}>
+                    <SmartInsightCapsule
+                      text={`Resultados de búsqueda para "${searchQuery}"`}
+                    />
+                  </View>
+                }
+                ListEmptyComponent={renderEmptyOrLoading}
+              />
+            )}
+
+            {/* CASO B: SECCIÓN ESPECÍFICA ABIERTA (EJ: CARNICERÍA O VERDULERÍA) */}
+            {searchQuery.trim().length === 0 && selectedSection !== null && (
+              <View style={{ flex: 1 }}>
+                {/* BARRA DE CABECERA DE LA SECCIÓN */}
                 <View
                   style={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 24,
-                    paddingVertical: 36,
-                    paddingHorizontal: 24,
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: '#F1F5F9',
-                    shadowColor: '#0F172A',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.03,
-                    shadowRadius: 8,
-                    elevation: 1,
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 16,
+                    paddingTop: 4,
+                    paddingBottom: 10,
                   }}
                 >
-                  <ActivityIndicator size="large" color="#EA580C" />
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={handleBackToSections}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: '#FFFFFF',
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: '#F1F5F9',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 2,
+                      elevation: 1,
+                    }}
+                  >
+                    <ArrowLeft size={16} color="#0F172A" />
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
+                      Categorías
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: selectedSection.accentColor || '#EA580C',
+                      }}
+                    />
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>
+                      {selectedSection.title}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* SUB-BUSCADOR DENTRO DE LA SECCIÓN */}
+                <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 14,
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      borderWidth: 1,
+                      borderColor: '#F1F5F9',
+                    }}
+                  >
+                    <Search size={14} color="#94A3B8" />
+                    <TextInput
+                      value={sectionFilter}
+                      onChangeText={setSectionFilter}
+                      placeholder={`Filtrar en ${selectedSection.title.toLowerCase()}...`}
+                      placeholderTextColor="#94A3B8"
+                      style={{
+                        flex: 1,
+                        marginLeft: 8,
+                        fontSize: 13,
+                        color: '#0F172A',
+                        fontWeight: '600',
+                      }}
+                      clearButtonMode="never"
+                      autoCorrect={false}
+                    />
+                    {sectionFilter.length > 0 && (
+                      <TouchableOpacity onPress={() => setSectionFilter('')} style={{ padding: 2 }}>
+                        <X size={14} color="#94A3B8" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                {isLoadingSection ? (
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+                    <ActivityIndicator size="large" color={selectedSection.accentColor || '#EA580C'} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748B', marginTop: 12 }}>
+                      Cargando {selectedSection.title.toLowerCase()}...
+                    </Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={filteredSectionProducts}
+                    renderItem={renderProductItem}
+                    keyExtractor={keyExtractor}
+                    numColumns={2}
+                    columnWrapperStyle={{
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 16,
+                      marginBottom: 12,
+                    }}
+                    contentContainerStyle={{
+                      paddingTop: 4,
+                      paddingBottom: recipeCart.length > 0 ? 175 : 110,
+                    }}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    initialNumToRender={8}
+                    maxToRenderPerBatch={8}
+                    windowSize={5}
+                    removeClippedSubviews={Platform.OS === 'android'}
+                    ListEmptyComponent={
+                      <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 50, paddingHorizontal: 20 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#64748B', textAlign: 'center' }}>
+                          {sectionFilter
+                            ? `No encontramos productos para "${sectionFilter}" en esta sección.`
+                            : 'No hay productos disponibles en esta sección.'}
+                        </Text>
+                      </View>
+                    }
+                  />
+                )}
+              </View>
+            )}
+
+            {/* CASO C: VISTA INICIAL MINIMALISTA ESTILO PEDIDOSYA MARKET (0 MS) */}
+            {searchQuery.trim().length === 0 && selectedSection === null && (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{
+                  paddingTop: 6,
+                  paddingBottom: recipeCart.length > 0 ? 175 : 110,
+                }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* SMART INSIGHT PILL */}
+                <View style={{ paddingHorizontal: 16, marginBottom: 14, marginTop: 4 }}>
+                  <SmartInsightCapsule
+                    text="Explorá los alimentos por categorías y descubrí opciones con macros oficiales verificados."
+                  />
                   <Text
                     style={{
-                      fontSize: 15,
+                      fontSize: 18,
                       fontWeight: '800',
                       color: '#0F172A',
                       marginTop: 14,
-                      textAlign: 'center',
+                      marginBottom: 12,
+                      letterSpacing: -0.3,
                     }}
                   >
-                    Buscando en la base de datos...
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '600',
-                      color: '#64748B',
-                      marginTop: 4,
-                      textAlign: 'center',
-                    }}
-                  >
-                    Consultando catálogo local y marcas argentinas
+                    Categorías
                   </Text>
                 </View>
-              ) : searchResults.length === 0 && searchQuery.trim().length > 0 ? (
-                <View
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 24,
-                    paddingVertical: 36,
-                    paddingHorizontal: 24,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: '#F1F5F9',
-                    shadowColor: '#0F172A',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 12,
-                    elevation: 2,
-                  }}
-                >
-                  {/* Icono de búsqueda en contenedor neutral */}
-                  <View
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 32,
-                      backgroundColor: '#F8FAFC',
-                      borderWidth: 1,
-                      borderColor: '#E2E8F0',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 16,
-                    }}
-                  >
-                    <Search size={28} color="#94A3B8" />
-                  </View>
 
-                  {/* Leyenda exacta requerida por el usuario */}
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: '900',
-                      color: '#0F172A',
-                      textAlign: 'center',
-                      lineHeight: 22,
-                    }}
-                  >
-                    No hay productos disponibles de acuerdo a tu búsqueda
-                  </Text>
-
-                  {/* Subtexto aclaratorio */}
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '600',
-                      color: '#64748B',
-                      textAlign: 'center',
-                      marginTop: 8,
-                      lineHeight: 19,
-                      maxWidth: 300,
-                    }}
-                  >
-                    ¿No encontrás "{searchQuery.trim()}"? Podés darlo de alta manualmente con sus macros en 1 minuto.
-                  </Text>
-
-                  {/* Botón CTA con degradado Zenit oficial */}
-                  <TouchableOpacity
-                    activeOpacity={0.88}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      setNewProdName(searchQuery.trim());
-                      setIsCreateProductModalOpen(true);
-                    }}
-                    style={{
-                      marginTop: 22,
-                      width: '100%',
-                      borderRadius: 18,
-                      overflow: 'hidden',
-                      shadowColor: '#EA580C',
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
-                  >
-                    <LinearGradient
-                      colors={ZENIT_GRADIENT}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{
-                        paddingVertical: 14,
-                        paddingHorizontal: 20,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                      }}
-                    >
-                      <Plus size={18} color="#FFFFFF" strokeWidth={2.8} />
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: '800',
-                          color: '#FFFFFF',
-                          letterSpacing: 0.2,
-                        }}
-                      >
-                        Dar de alta este producto
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              ) : (
+                {/* GRILLA DE 3 COLUMNAS (6 TOP CATEGORÍAS O TODAS SI ESTÁ EXPANDIDO) */}
                 <View
                   style={{
                     flexDirection: 'row',
                     flexWrap: 'wrap',
                     justifyContent: 'space-between',
-                    gap: 12,
+                    paddingHorizontal: 16,
                   }}
                 >
-                  {searchResults.map((item) => {
-                    const isFav = favorites.some((f) => f.name.toLowerCase() === item.name.toLowerCase());
-                    return (
-                      <TouchableOpacity
-                        key={item.id}
-                        activeOpacity={0.88}
-                        onPress={() => handleOpenProductDetail(item)}
-                        style={{
-                          width: COLUMN_WIDTH,
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: 22,
-                          padding: 10,
-                          borderWidth: 1,
-                          borderColor: '#F1F5F9',
-                          shadowColor: '#0F172A',
-                          shadowOffset: { width: 0, height: 3 },
-                          shadowOpacity: 0.04,
-                          shadowRadius: 10,
-                          elevation: 2,
-                        }}
-                      >
-                        {/* FOTO CON CORAZÓN SUTIL */}
-                        <View style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
-                          <ProductThumbnail
-                            uri={item.image}
-                            style={{
-                              width: '100%',
-                              height: 124,
-                              borderRadius: 16,
-                            }}
-                          />
-
-                          {/* ACCIÓN SUTIL CORAZÓN */}
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => {
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              toggleFavorite(item);
-                            }}
-                            style={{
-                              position: 'absolute',
-                              top: 8,
-                              right: 8,
-                              backgroundColor: 'rgba(255, 255, 255, 0.92)',
-                              width: 32,
-                              height: 32,
-                              borderRadius: 16,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              shadowColor: '#000',
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.1,
-                              shadowRadius: 3,
-                            }}
-                          >
-                            <Heart
-                              size={16}
-                              color={isFav ? '#E11D48' : '#64748B'}
-                              fill={isFav ? '#E11D48' : 'transparent'}
-                            />
-                          </TouchableOpacity>
-                        </View>
-
-                        {/* INFORMACIÓN DEL PRODUCTO: SOLO MARCA Y NOMBRE */}
-                        <View style={{ marginTop: 10, paddingHorizontal: 2 }}>
-                          <Text
-                            style={{
-                              fontSize: 10,
-                              fontWeight: '800',
-                              color: '#94A3B8',
-                              textTransform: 'uppercase',
-                              letterSpacing: 0.6,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {item.brand || 'Alimento'}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 13,
-                              fontWeight: '800',
-                              color: '#0F172A',
-                              marginTop: 2,
-                              lineHeight: 17,
-                            }}
-                            numberOfLines={2}
-                          >
-                            {item.name}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {(isCategoriesExpanded ? MARKET_SECTIONS : MARKET_SECTIONS.slice(0, 6)).map(
+                    (section) => (
+                      <MinimalCategoryCard
+                        key={section.id}
+                        section={section}
+                        onPress={handleSelectSection}
+                        columnWidth={CATEGORY_COLUMN_WIDTH}
+                      />
+                    )
+                  )}
                 </View>
-              )}
-            </View>
-          )}
+
+                {/* BOTÓN DESPLEGABLE MÁS / MENOS CATEGORÍAS */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setIsCategoriesExpanded((prev) => !prev);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                    marginHorizontal: 16,
+                    marginTop: 4,
+                    marginBottom: 24,
+                    borderRadius: 14,
+                    backgroundColor: '#F8FAFC',
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    gap: 6,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>
+                    {isCategoriesExpanded ? 'Menos categorías' : 'Más categorías'}
+                  </Text>
+                  {isCategoriesExpanded ? (
+                    <ChevronUp size={16} color="#0F172A" strokeWidth={2.5} />
+                  ) : (
+                    <ChevronDown size={16} color="#0F172A" strokeWidth={2.5} />
+                  )}
+                </TouchableOpacity>
+
+                {/* 3 CARRUSELES TEMÁTICOS HORIZONTALES */}
+                <HorizontalProductCarousel
+                  title="Alimentos Esenciales"
+                  subtitle="Básicos de la canasta argentina con macros exactos"
+                  products={carousels.essentials}
+                  onOpenProduct={handleOpenProductDetail}
+                />
+
+                <HorizontalProductCarousel
+                  title="Fitness & Proteínas"
+                  subtitle="Suplementos y alimentos altos en proteína"
+                  products={carousels.fitness}
+                  onOpenProduct={handleOpenProductDetail}
+                />
+
+                <HorizontalProductCarousel
+                  title="Populares & Destacados"
+                  subtitle="Primeras marcas argentinas verificadas"
+                  products={carousels.featured}
+                  onOpenProduct={handleOpenProductDetail}
+                />
+              </ScrollView>
+            )}
+          </View>
+        )}
+
+        {/* ======================================================= */}
+        {/* PESTAÑAS 2 Y 3: MIS RECETAS Y FAVORITOS EN SCROLLVIEW   */}
+        {/* ======================================================= */}
+        {activeTab !== 'products' && (
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: recipeCart.length > 0 ? 175 : 110 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
 
           {/* ======================================================= */}
           {/* PESTAÑA 2: MIS RECETAS                                  */}
@@ -1440,84 +2053,15 @@ export default function FoodScreen({ navigation }) {
                     gap: 12,
                   }}
                 >
-                  {favorites.map((fav) => (
-                    <TouchableOpacity
-                      key={fav.id}
-                      activeOpacity={0.88}
-                      onPress={() => handleOpenProductDetail(fav)}
-                      style={{
-                        width: COLUMN_WIDTH,
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: 22,
-                        padding: 10,
-                        borderWidth: 1,
-                        borderColor: '#F1F5F9',
-                        shadowColor: '#0F172A',
-                        shadowOffset: { width: 0, height: 3 },
-                        shadowOpacity: 0.04,
-                        shadowRadius: 10,
-                        elevation: 2,
-                      }}
-                    >
-                      <View style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
-                        <ProductThumbnail
-                          uri={fav.image || fav.imageUri}
-                          style={{
-                            width: '100%',
-                            height: 124,
-                            borderRadius: 16,
-                          }}
-                        />
-
-                        <TouchableOpacity
-                          activeOpacity={0.8}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            toggleFavorite(fav);
-                          }}
-                          style={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-                            width: 32,
-                            height: 32,
-                            borderRadius: 16,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Heart size={16} color="#E11D48" fill="#E11D48" />
-                        </TouchableOpacity>
-                      </View>
-
-                      <View style={{ marginTop: 10, paddingHorizontal: 2 }}>
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            fontWeight: '800',
-                            color: '#94A3B8',
-                            textTransform: 'uppercase',
-                            letterSpacing: 0.6,
-                          }}
-                          numberOfLines={1}
-                        >
-                          Favorito
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: '800',
-                            color: '#0F172A',
-                            marginTop: 2,
-                            lineHeight: 17,
-                          }}
-                          numberOfLines={2}
-                        >
-                          {fav.name}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                  {favorites.map((fav, index) => (
+                    <ProductCard
+                      key={fav.id || `${fav.name}-${index}`}
+                      item={fav}
+                      isFav={true}
+                      onOpenDetail={handleOpenProductDetail}
+                      onToggleFavorite={toggleFavorite}
+                      columnWidth={COLUMN_WIDTH}
+                    />
                   ))}
                 </View>
               ) : (
@@ -1534,6 +2078,7 @@ export default function FoodScreen({ navigation }) {
             </View>
           )}
         </ScrollView>
+      )}
 
         {/* ======================================================= */}
         {/* BARRA FLOTANTE DE RECETA (CARRITO E-COMMERCE)           */}

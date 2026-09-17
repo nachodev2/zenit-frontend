@@ -20,7 +20,7 @@ import { ScanProcessingOverlay } from '../components/scanner/ScanProcessingOverl
 import { ScanResultModal } from '../components/scanner/ScanResultModal';
 import { CoachChatModal } from '../components/scanner/CoachChatModal';
 import { BarcodeProductModal } from '../components/scanner/BarcodeProductModal';
-import { getProductByBarcode } from '../services/api/openFoodFactsService';
+import { getProductByBarcode } from '../services/api/foodCatalogService';
 
 export default function ScanScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();

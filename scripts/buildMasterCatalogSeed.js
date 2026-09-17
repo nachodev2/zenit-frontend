@@ -107,11 +107,16 @@ const NON_FOOD_KEYWORDS = [
   'cepillo', 'insecticida', 'pañal', 'pañales', 'toalla femenina', 'toallitas',
   'tampon', 'tampón', 'higienico', 'higiénico', 'limpiador', 'trapo', 'esponja',
   'dosificador', 'perfume', 'colonia', 'tintura', 'algodon', 'algodón', 'preservativo',
-  'crema facial', 'crema corporal', 'protector solar', 'bronceador', 'juguete', 'pila '
+  'crema facial', 'crema corporal', 'protector solar', 'bronceador', 'juguete', 'pila ',
+  'dog chow', 'cat chow', 'catchow', 'dogchow', 'whiskas', 'pedigree', 'felix',
+  'gati', 'purina', 'temptations', 'pets class', 'pet\'s class', 'eukanuba', 'royal canin', 'pro plan',
+  'mascota', 'mascotas', 'canino', 'felino'
 ];
 
 function isFood(name, brand) {
-  const lower = `${brand} ${name}`.toLowerCase();
+  const lower = `${brand || ''} ${name || ''}`.toLowerCase();
+  if (lower.includes('perro') && !lower.includes('vino')) return false;
+  if (lower.includes('gato') && !lower.includes('gatorade') && !lower.includes('rigatoni')) return false;
   return !NON_FOOD_KEYWORDS.some((w) => lower.includes(w));
 }
 
