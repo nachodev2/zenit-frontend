@@ -1,0 +1,1802 @@
+[
+  {
+    "original_product": {
+      "id": "9a924d84-44f8-4260-ae5e-bd0e9ec78de5",
+      "source_name": "Pan Proteinas Masa Madre",
+      "brand": "ELABORACION PROPIA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Pan Proteico",
+      "category": "panificados",
+      "subcategory": "Panes Especiales",
+      "food_type": "Pan de masa madre con proteínas",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento horneado, específicamente pan elaborado con masa madre y aporte proteico, sin marca comercial fija y de venta unitaria."
+    }
+  },
+  {
+    "original_product": {
+      "id": "d63146b9-0064-4b9f-ac45-24da69294fce",
+      "source_name": "Proteina En Polvo Granger Arvejas 145gr",
+      "brand": "GRANGER",
+      "package_grams": 145
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Vegetal en Polvo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Proteína de arveja",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Es un suplemento alimentario a base de proteína de arveja en polvo, apto para consumo humano."
+    }
+  },
+  {
+    "original_product": {
+      "id": "140cbe60-fe45-4daf-bb02-3f83bcb1a355",
+      "source_name": "Proteína Whey Sabor Chocolate 540 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es una proteína en polvo para deportistas, clasificada correctamente dentro de suplementos, sin marca ni sabor ni gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "c3390b73-b96b-40d4-b748-a650f48ce17b",
+      "source_name": "Proteína Whey Sabor Chocolate 900 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es un suplemento de proteína en polvo para deportistas. Se eliminó la marca, el gramaje y el sabor según las reglas estrictas."
+    }
+  },
+  {
+    "original_product": {
+      "id": "98b4fd93-c6c7-45d9-8b78-2c0ff32ba27f",
+      "source_name": "Proteina En Polvo Ena Sport Vainilla Caramelo 930gr",
+      "brand": "ENA SPORT",
+      "package_grams": 930
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína En Polvo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "Es un suplemento alimenticio en polvo para deportistas. Se elimina la marca ENA Sport, el sabor Vainilla Caramelo y el gramaje 930gr para cumplir estrictamente con las reglas de normalización."
+    }
+  },
+  {
+    "original_product": {
+      "id": "1ceaae18-84e9-45de-8866-0e91402597be",
+      "source_name": "Proteína Whey Sabor Cookies y Cream 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento de proteína en polvo para nutrición deportiva. Se normalizó quitando la marca, el sabor y el gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "962b0fbc-9eae-459a-9c7b-633d5b84617f",
+      "source_name": "Proteína Whey Sabor Frutilla 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína en polvo. Se eliminó la marca, el sabor y el gramaje según las reglas."
+    }
+  },
+  {
+    "original_product": {
+      "id": "3669682a-01f1-47f0-b41b-df9392cfa25d",
+      "source_name": "Proteína Whey Sabor Banana 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento de proteína en polvo, se elimina la marca, el sabor y el gramaje según las reglas."
+    }
+  },
+  {
+    "original_product": {
+      "id": "50ffa2d9-e70e-401c-be98-02df0422270a",
+      "source_name": "Proteína Whey Sabor Frutilla 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína whey, excluyendo marca, sabor y gramaje para el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "88b9a8de-9a14-457c-9dcb-30207f424cb1",
+      "source_name": "Proteína Whey Sabor Chocolate 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento alimentario en polvo. Se eliminó la marca Star Nutrition, el sabor chocolate y el peso."
+    }
+  },
+  {
+    "original_product": {
+      "id": "baea5e23-a816-478d-a296-e2876eb816d2",
+      "source_name": "Proteína Whey Sabor Crema y Vainilla 980 Grs Raptor",
+      "brand": "RAPTOR",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es una proteína en polvo destinada a la suplementación deportiva, clasificada correctamente dentro de suplementos sin incluir marca, sabor ni gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "a6649d44-438b-41d9-8f0e-f85dd8bb3585",
+      "source_name": "Proteina En Polvo Ena Sport Choco Mousse 930gr",
+      "brand": "ENA SPORT",
+      "package_grams": 930
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína En Polvo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento nutricional",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.99,
+      "reasoning": "El producto es una proteína en polvo para nutrición deportiva, clasificada como suplemento, sin incluir marca, sabor ni gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "6f544c9f-4cd6-431c-af5a-6ec87be32502",
+      "source_name": "Proteína Whey Sabor Vainilla 900 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína en polvo. Se eliminó la marca (Ena Sport), el sabor (Vainilla) y el gramaje (900 Grs), manteniendo solo el nombre canónico en Title Case."
+    }
+  },
+  {
+    "original_product": {
+      "id": "491c8b82-4457-4bb2-abbd-06653c46caac",
+      "source_name": "Proteína Whey Sabor Frutilla 579 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína, se elimina la marca, el sabor y el gramaje del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "64a137c4-0b11-47a2-9dd8-e2ff2a4d3f5e",
+      "source_name": "Proteína Whey Sabor Vainilla 540 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína en polvo. Se eliminó la marca (Ena Sport), el sabor (Vainilla) y el gramaje (540 Grs) según las reglas, dejando el nombre canónico en Title Case."
+    }
+  },
+  {
+    "original_product": {
+      "id": "9ccacda4-3974-4772-8aa2-f8154ae04c30",
+      "source_name": "Proteina En Polvo Ena Sport Cafe Con Leche 400gr",
+      "brand": "ENA SPORT",
+      "package_grams": 400
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína En Polvo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "Es un suplemento nutricional en polvo para deportistas. Se elimina la marca, el sabor y el gramaje del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "7405b1c0-d5c4-40f0-a111-f8f2ee2e5416",
+      "source_name": "Proteína Whey Sabor Frutilla 900 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína, clasificado correctamente sin incluir marca, sabor ni gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "cd6e7775-dc2a-46c5-9f98-a45fef4ba0d3",
+      "source_name": "Barra de Proteína Sabor Chocolate 46 Grs Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra De Proteína",
+      "category": "suplementos",
+      "subcategory": "barras de proteína",
+      "food_type": "barra nutricional",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra de proteína apta para consumo humano, clasificada dentro de suplementos, sin incluir marca, sabor o gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "bdd3ac14-ab19-4c47-87ef-c872153d49cd",
+      "source_name": "Queso Proteina X 1 Kg La Serenisima",
+      "brand": "LA SERENISIMA",
+      "package_grams": 1000
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Queso Proteico",
+      "category": "lacteos",
+      "subcategory": "quesos",
+      "food_type": "queso",
+      "serving_mode": "bulk_weight",
+      "confidence": 0.95,
+      "reasoning": "El producto es un queso proteico comercializado por peso (1 kg), clasificado correctamente dentro de lácteos."
+    }
+  },
+  {
+    "original_product": {
+      "id": "b5cff83b-5109-4172-bb41-4517b3a73a68",
+      "source_name": "Barra de Proteína Sabor Frutilla 46 Grs Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un producto alimenticio destinado a la suplementación deportiva, clasificado en Title Case sin marca, sabor ni gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "7624296b-a1e8-4559-addc-d915a8e9e611",
+      "source_name": "Leche Uat Proteina 1 Lts La Serenísima",
+      "brand": "LA SERENISIMA",
+      "package_grams": 1000
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Leche Proteica",
+      "category": "lacteos",
+      "subcategory": "leches",
+      "food_type": "leche uat",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es una leche UAT proteica, un alimento lácteo líquido envasado. Se remueve la marca y el volumen para el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "52b771b7-412d-4ae8-84a0-0c24b9924098",
+      "source_name": "Fideos Tirabuzón Proteína Plus 400 Grs Matarazzo",
+      "brand": "MATARAZZO",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Fideos",
+      "category": "cereales_legumbres",
+      "subcategory": "Pastas Secas",
+      "food_type": "Pasta",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento (fideos secos), se elimina la marca, el sabor/variedad y el gramaje según las reglas, dejándolo en 'Fideos' con categoría de cereales/legumbres."
+    }
+  },
+  {
+    "original_product": {
+      "id": "0834df31-5dd1-483b-a0bb-6feb86073b0c",
+      "source_name": "Barra de Proteína Sabor Cacao 60 Grs Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento suplementario apto para consumo humano, clasificado como barra proteica, removiendo marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "f27be8a5-282b-43db-8de2-bbb21dd60e69",
+      "source_name": "Barra de Proteína Sabor Mantequilla de Maní 60 Grs Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteína",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra de proteína apta para consumo humano, clasificada dentro de suplementos, removiendo marca, sabor y gramaje para el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "a420dca6-4f0a-413e-925c-9cd54aae911d",
+      "source_name": "Yogur Ser Pro Con Proteina Vainilla Caramel 17",
+      "brand": "SER",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Yogur Proteico",
+      "category": "lacteos",
+      "subcategory": "yogures",
+      "food_type": "yogur",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un yogur con agregado de proteínas de la marca Ser, categorizado correctamente dentro de lácteos y envasado por volumen."
+    }
+  },
+  {
+    "original_product": {
+      "id": "c64aaaf9-b970-4ef4-bd3e-710f8234a59c",
+      "source_name": "Pan Integral Proteína sabor Zanahoria 250 Grs Mestemacher",
+      "brand": "MESTEMACHER",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Pan Integral",
+      "category": "panificados",
+      "subcategory": "Panes de molde",
+      "food_type": "Pan",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Se normalizó removiendo la marca (Mestemacher), el peso (250 Grs) y el sabor/atributo (Proteína, Zanahoria), clasificándolo correctamente dentro de los panificados empacados."
+    }
+  },
+  {
+    "original_product": {
+      "id": "eb4ebd5d-414b-47d3-b9cd-bce254e47079",
+      "source_name": "Barra de Proteína Low Carb Sabor Brownie 45 Grs Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal y proteicas",
+      "food_type": "snack procesado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es una barra de proteína apta para consumo humano, clasificada como snack, removiendo marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "c3053c23-e7d3-41c6-9925-2a854dfeee07",
+      "source_name": "Barra de Proteína Iron Bar Sabor Banana 46 Grs Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Se normalizó a Barra Proteica removiendo la marca Gentech, el sabor banana y el gramaje, manteniéndolo en la categoría de suplementos."
+    }
+  },
+  {
+    "original_product": {
+      "id": "0ebfd52a-20e1-4feb-a381-67969b44e14f",
+      "source_name": "Barra de Proteína Sabor Almond Salted Caramel 45 Grs Notprotein Bar",
+      "brand": "NotProtein Bar",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteína",
+      "food_type": "barra nutricional",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento de tipo suplemento en formato de barra proteica, excluyendo marca, gramaje y sabor del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "b5805b42-06c1-4115-8fc7-bad241e64c63",
+      "source_name": "Yog Yogurade Proteinas Banana 250g",
+      "brand": "YOGURADE",
+      "package_grams": 250
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Yogur Proteico",
+      "category": "lacteos",
+      "subcategory": "yogures",
+      "food_type": "yogur líquido",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un yogur con agregado de proteínas, en formato líquido o bebible, comercializado en envase individual."
+    }
+  },
+  {
+    "original_product": {
+      "id": "29998172-1aaf-4914-806e-0d4f61c7d575",
+      "source_name": "Leche Uat Las Tres Niñas Proteinas 1l",
+      "brand": "LAS TRES NIÑAS",
+      "package_grams": 1000
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Leche Proteica",
+      "category": "lacteos",
+      "subcategory": "leches",
+      "food_type": "leche enriquecida",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es una leche UAT enriquecida en proteínas, clasificada dentro de lácteos sin incluir marca, sabor o gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "95790ed3-c73e-4cd1-866f-3e09e25017e4",
+      "source_name": "Barra Proteina Raptor Mani X45g",
+      "brand": "RAPTOR",
+      "package_grams": 45
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra De Proteina",
+      "category": "suplementos",
+      "subcategory": "Barritas proteicas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento funcional o suplemento en formato de barra, excluyendo la marca y el sabor mani."
+    }
+  },
+  {
+    "original_product": {
+      "id": "27324507-6cc2-461d-8ff9-07bad8501f35",
+      "source_name": "Barra Proteina Raptor Cookies X45g",
+      "brand": "RAPTOR",
+      "package_grams": 45
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal y proteicas",
+      "food_type": "snack procesado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica apta para consumo humano. Se elimina la marca Raptor, el sabor cookies y el gramaje para obtener el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "66d93c7a-6abb-4cbf-a1e5-b956e1f4476f",
+      "source_name": "Proteína En Polvo Vainilla Y Caramelo 900 Grs Raptor",
+      "brand": "RAPTOR",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína En Polvo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Es un suplemento alimenticio en polvo, se excluyen marca, sabor y gramaje del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "25eac554-9a59-4ad3-92e8-ad7eac06bc1a",
+      "source_name": "Proteína Whey Sabor Vainilla 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína en polvo. Se eliminó la marca, el sabor y el peso."
+    }
+  },
+  {
+    "original_product": {
+      "id": "fa09d1bb-a881-4aaa-b622-6f289665db54",
+      "source_name": "Proteína En Polvo Sabor Chocolate 1008 Grs Raptor",
+      "brand": "RAPTOR",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína En Polvo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento nutricional",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es una proteína en polvo para nutrición deportiva, clasificada como suplemento. Se elimina la marca Raptor, el sabor chocolate y el peso."
+    }
+  },
+  {
+    "original_product": {
+      "id": "18cd0047-634a-48b7-b69f-906d93a62748",
+      "source_name": "Proteína Vegana Sabor Vainilla 907 Grs Molé",
+      "brand": "Molé",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Vegana",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Proteína vegetal en polvo",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Es un suplemento alimenticio de proteína vegana, removiendo marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "53a4484f-ddbb-4c91-a67b-d97df9bcf8e6",
+      "source_name": "Proteína Whey Sabor Vainilla 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína whey, excluyendo marca, sabor y gramaje para cumplir con las reglas de normalización."
+    }
+  },
+  {
+    "original_product": {
+      "id": "688a054b-7e98-4880-a7ec-c6562b99a870",
+      "source_name": "Proteína Whey Sabor Vainilla 175 Grs x 7 Un Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es un suplemento de proteína en polvo para deportistas, removiendo marca, sabor y gramaje para el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "f9d17890-666f-4091-ac20-228e401a835d",
+      "source_name": "Proteína Whey Sabor Chocolate 175 Grs x 7 Un Gentech",
+      "brand": "GENTECH",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es una proteína en polvo para uso nutricional/deportivo, clasificada correctamente dentro de suplementos, sin marca ni sabor ni gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "064a632d-ce81-4025-b496-e4fce4fa5563",
+      "source_name": "Proteina De Huevo Hidrolizada Natural X 750 Gr Granger",
+      "brand": "GRANGER",
+      "package_grams": 750
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína De Huevo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un suplemento alimentario a base de proteína de huevo hidrolizada, por lo tanto se clasifica dentro de suplementos alimenticios."
+    }
+  },
+  {
+    "original_product": {
+      "id": "77d18f16-e0b8-4fec-9307-fd8e36a3cc91",
+      "source_name": "Proteina En Polvo Whey Natural X 750 Gr Granger",
+      "brand": "GRANGER",
+      "package_grams": 750
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas en polvo",
+      "food_type": "Suplemento nutricional",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es una proteína en polvo, apta para consumo humano, clasificada como suplemento. Se elimina la marca Granger, el sabor y el gramaje del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "dc112d86-d07c-42b2-a155-89c8fd25c0e0",
+      "source_name": "Proteína Vegetal Sabor Chocolate Nuevos Alimentos 500 Gr",
+      "brand": "NUEVOS ALIMENTOS",
+      "package_grams": 500
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Vegetal",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Proteína en polvo",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es una proteína vegetal en polvo destinada al consumo humano, clasificada como suplemento nutricional. Se removió la marca, el sabor y el gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "0ce13373-2374-4674-92ee-12b412e722d6",
+      "source_name": "Proteína De Soja Orgánica Fina Schatzi X 200 Gr",
+      "brand": "SCHATZI",
+      "package_grams": 200
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína De Soja",
+      "category": "cereales_legumbres",
+      "subcategory": "Derivados de legumbres",
+      "food_type": "Proteína de soja texturizada",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento derivado de la soja utilizado habitualmente como sustituto de la carne, categorizado correctamente dentro de cereales y legumbres sin incluir marca, sabor ni gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "16fd3ee9-902c-457e-9118-77182e49be28",
+      "source_name": "Creatina Monohidrato 200 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Creatina",
+      "category": "suplementos",
+      "subcategory": "Suplementos Deportivos",
+      "food_type": "Creatina Monohidrato",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Es un suplemento deportivo apto para consumo humano (nutrición deportiva), por lo que se clasifica dentro de comida/suplementos según las reglas."
+    }
+  },
+  {
+    "original_product": {
+      "id": "fd621bc2-19a4-4996-aa1a-a08705e859a5",
+      "source_name": "Creatina Monohidrato 150 Grs Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Creatina Monohidrato",
+      "category": "suplementos",
+      "subcategory": "Nutrición Deportiva",
+      "food_type": "Suplemento Dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "Es un suplemento deportivo comestible, normalizado sin marca ni gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "2b86da5e-100d-4013-b909-34cc0b447b40",
+      "source_name": "Citrato de Magnesio Ena Sport Sabor Lemonade 192 Grs",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Citrato de Magnesio",
+      "category": "suplementos",
+      "subcategory": "Minerales",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Es un suplemento nutricional de magnesio en polvo, clasificado como suplemento alimentario."
+    }
+  },
+  {
+    "original_product": {
+      "id": "eb44c926-219a-4539-af68-c1214b7136da",
+      "source_name": "Suplemento Ena Sport Carbo Energy Sabor Fruit Punch 540 Grs",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Suplemento Deportivo",
+      "category": "suplementos",
+      "subcategory": "energizantes",
+      "food_type": "carbohidratos en polvo",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "Es un suplemento nutricional en polvo para deportistas, clasificado correctamente dentro de suplementos."
+    }
+  },
+  {
+    "original_product": {
+      "id": "68a2e754-2e93-46dc-893a-25213118a36a",
+      "source_name": "Capsulas Ena Sport 60unidades",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Suplemento Deportivo",
+      "category": "suplementos",
+      "subcategory": "Capsulas",
+      "food_type": "Suplemento",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es un suplemento deportivo en cápsulas, por lo que entra en la categoría de suplementos y su modo de venta es por unidad."
+    }
+  },
+  {
+    "original_product": {
+      "id": "6027561c-ef09-4507-8f4a-cd3f2e0d04e3",
+      "source_name": "Barra Proteica Ena Sport Banana 736gr",
+      "brand": "ENA SPORT",
+      "package_grams": 736
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un producto alimenticio destinado a la suplementación deportiva, clasificado como barra proteica, removiendo marca y sabor."
+    }
+  },
+  {
+    "original_product": {
+      "id": "9414358a-cc70-4631-a473-df14e0f5c8cc",
+      "source_name": "Colágeno Ena Sport Sabor Naranja 407 Grs",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Colágeno",
+      "category": "suplementos",
+      "subcategory": "Suplementos Dietarios",
+      "food_type": "Suplemento en polvo",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un suplemento dietario a base de colágeno, por lo que se clasifica dentro de suplementos, removiendo marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "06e7104f-b351-43d3-bfd4-008cdb3f4158",
+      "source_name": "Barra Proteica Sabor Chocolate Brownie 736 Grs x 16 Un Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "Snacks Deportivos",
+      "food_type": "Barra nutricional",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica destinada a la suplementación deportiva, clasificada correctamente eliminando marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "7f2e9b24-b380-4800-803a-1de827c9cbe0",
+      "source_name": "Barra Proteica Sabor Frutilla a la Crema 736 Grs x 16 Un Ena Sport",
+      "brand": "ENA SPORT",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras proteicas",
+      "food_type": "snack proteico",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento funcional tipo barra proteica de la marca Ena Sport, excluyendo marca, sabor, gramaje y cantidad del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "88f629a4-26ab-4d04-8070-a2c0f7615820",
+      "source_name": "Wcjna0729 Pantalon Sport Nena Ts A Tl Sport  S/e 1 Un.",
+      "brand": "URB",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": false,
+      "canonical_name": null,
+      "category": null,
+      "subcategory": null,
+      "food_type": null,
+      "serving_mode": null,
+      "confidence": 1,
+      "reasoning": "El producto es una prenda de vestir (pantalón sport de niña), por lo que no es un alimento."
+    }
+  },
+  {
+    "original_product": {
+      "id": "3ba5cb6b-1cec-441f-8912-05642e7ed6f3",
+      "source_name": "Granola Frutos Rojos  400gr Molé",
+      "brand": "Molé",
+      "package_grams": 400
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Granola",
+      "category": "cereales_legumbres",
+      "subcategory": "Granolas y Cereales",
+      "food_type": "Granola",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es una granola de frutos rojos. Se elimina la marca, el sabor y el gramaje para obtener el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "d668b373-6578-4108-bf70-57c44d5e919e",
+      "source_name": "Suplementos Whey Protein Chocolate 454 Gr",
+      "brand": "WEB SUPPLEMENTS",
+      "package_grams": 454
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es un suplemento de proteína en polvo. Se eliminó la marca, el sabor (chocolate) y el peso del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "9b95eb73-1dda-4ba4-a8b9-35a69d9b5eef",
+      "source_name": "Suplementos Web Supp Whey Protein Drink 20 Gr",
+      "brand": "WEB SUPPLEMENTS",
+      "package_grams": 20
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína En Polvo",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es un suplemento de proteína en polvo para preparar bebida, por lo que pertenece a la categoría de suplementos."
+    }
+  },
+  {
+    "original_product": {
+      "id": "6072cbca-519d-4a7c-9c91-2bdf24659f3e",
+      "source_name": "Suplementos Web Supp Whey Protein Chocolate 454 Gr",
+      "brand": "WEB SUPPLEMENTS",
+      "package_grams": 454
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Polvo para preparar bebida proteica",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento dietario a base de proteína whey, por lo que se clasifica dentro de suplementos alimentarios, removiendo la marca, sabor y gramaje del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "e81de9db-f286-4d06-9ed0-06423a6f6bf5",
+      "source_name": "Suplementos Web Supp Whey Protein Chocolate X 1 Kg-fco-kg-1",
+      "brand": "WEB SUPPLEMENTS",
+      "package_grams": 1000
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario en polvo",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es un suplemento de proteína whey, clasificado correctamente dentro de suplementos sin incluir marca, sabor ni gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "fa339c90-3ef0-4b64-a0fb-5536db0823c2",
+      "source_name": "Suplementos Web Supp Whey Protein Vainilla X 1 Kg-fco-kg-1",
+      "brand": "WEB SUPPLEMENTS",
+      "package_grams": 1000
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es una proteína en polvo destinada a la suplementación deportiva, clasificada correctamente dentro de suplementos sin marca, gramaje ni sabor."
+    }
+  },
+  {
+    "original_product": {
+      "id": "4c334501-18de-46d7-bbce-44333ade2dd2",
+      "source_name": "Suplemento Dietario Whey Protein Sabor Chocolate Suizo 908 Grs Star Nutrition",
+      "brand": "STAR NUTRITION",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 1,
+      "reasoning": "El producto es un suplemento nutricional de proteína en polvo. Se eliminó la marca (Star Nutrition), el sabor (Chocolate Suizo), el gramaje y detalles adicionales para obtener un nombre canónico limpio en Title Case."
+    }
+  },
+  {
+    "original_product": {
+      "id": "b44ee060-879d-43b2-b568-d54a402ee2ad",
+      "source_name": "Granola Chocolate 400gr Molé",
+      "brand": "Molé",
+      "package_grams": 400
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Granola",
+      "category": "cereales_legumbres",
+      "subcategory": "Cereales y Granolas",
+      "food_type": "Granola",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es una granola empaquetada. Se eliminó la marca Molé, el sabor chocolate y el gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "a3414a9d-86fc-4407-8964-c5ec745a433a",
+      "source_name": "Proteina En Polvo Whey Sabor Vainilla X 750 Gr Granger",
+      "brand": "GRANGER",
+      "package_grams": 750
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Proteína Whey",
+      "category": "suplementos",
+      "subcategory": "Proteínas",
+      "food_type": "Suplemento dietario",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.98,
+      "reasoning": "El producto es un suplemento alimentario en polvo, se elimina la marca, gramaje y sabor según las reglas."
+    }
+  },
+  {
+    "original_product": {
+      "id": "e988d789-d740-4e38-8434-a845b103eb9d",
+      "source_name": "Barra Proteica Sabor Choco Maní 45 Grs Entrenuts",
+      "brand": "ENTRENUTS",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal y proteicas",
+      "food_type": "snack dulce",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento apto para consumo humano (barra proteica), se elimina la marca, el gramaje y el sabor según las reglas de normalización."
+    }
+  },
+  {
+    "original_product": {
+      "id": "9be5df81-8724-4e56-8ec0-e2431e80c02f",
+      "source_name": "Barra Proteica Gentech Low Carb Peanut Butter 45gr",
+      "brand": "GENTECH",
+      "package_grams": 45
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 1,
+      "reasoning": "El producto es un alimento funcional clasificado como suplemento en formato de barra proteica, removiendo marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "4a3ae885-0cc8-4420-867f-fc36abde54dd",
+      "source_name": "Barra Proteica Sabor Coco 60 Grs B3st",
+      "brand": "B3ST",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "Barras de Proteína",
+      "food_type": "Alimento procesado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento suplementario procesado que se vende por unidad. Se eliminó la marca B3ST, el sabor coco y el gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "d63f9877-0481-4cd7-af34-51fa2729876f",
+      "source_name": "Barra Proteica Sabor Caramelo 60 Grs B3st",
+      "brand": "B3ST",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "Snacks Deportivos",
+      "food_type": "Barra de proteína",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica comestible orientada a la suplementación nutricional. Se removió la marca (B3st), el sabor (Caramelo), y el gramaje (60 Grs) siguiendo las reglas estrictas. El canonical_name está en Title Case."
+    }
+  },
+  {
+    "original_product": {
+      "id": "e132fe5a-37f8-4ccf-83ab-f2c1f1de3f50",
+      "source_name": "Barra Proteica Sabor Maní y Chocolate 45 Grs Integra",
+      "brand": "INTEGRA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras proteicas",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica comestible para deportistas o suplementación, se normaliza removiendo marca, sabores y peso."
+    }
+  },
+  {
+    "original_product": {
+      "id": "efe9c24e-346e-43af-b133-bb7a3139d980",
+      "source_name": "Barra Proteica Laddu Bar Frutos Secos Y Cranberries 60gr",
+      "brand": "LADDU",
+      "package_grams": 60
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal y proteicas",
+      "food_type": "snack procesado",
+      "serving_mode": "unit",
+      "confidence": 1,
+      "reasoning": "El producto es una barra proteica comestible. Se extrajeron la marca (Laddu), los sabores (frutos secos y cranberries) y el gramaje, dejando solo el nombre canónico en Title Case."
+    }
+  },
+  {
+    "original_product": {
+      "id": "44d782ec-d6db-46eb-83e5-aefe859e8ca8",
+      "source_name": "Barra Proteica Sabor pasta de Maní y Arándanos 43 Grs Integra",
+      "brand": "INTEGRA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "Barritas",
+      "food_type": "Procesado",
+      "serving_mode": "unit",
+      "confidence": 0.98,
+      "reasoning": "El producto es un alimento de tipo suplemento/snack saludable, se elimina la marca, gramaje y sabores para obtener el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "59d8be29-2913-4607-a0c7-d879918a3c4b",
+      "source_name": "Barra Proteica Sabor Frutos Secos y Coco 60 Grs Laddu Bar",
+      "brand": "LADDU",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras proteicas",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.98,
+      "reasoning": "El producto es una barra de proteína apta para consumo humano, clasificada dentro de suplementos y snacks proteicos, removiendo marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "2ae53d1c-ae9c-4816-bfd2-0c824cd33116",
+      "source_name": "Rabanito Orgánico X Unidad",
+      "brand": "VERDULERIA PROPIA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Rabanito",
+      "category": "frutas_verduras",
+      "subcategory": "Verduras",
+      "food_type": "Hortaliza",
+      "serving_mode": "unit",
+      "confidence": 1,
+      "reasoning": "El producto es un rabanito orgánico fresco, clasificado correctamente dentro de frutas y verduras, con modalidad de venta por unidad."
+    }
+  },
+  {
+    "original_product": {
+      "id": "0daebb90-d1a0-47ea-9580-2353dc4d209f",
+      "source_name": "Barra de Cereal Proteica Sabor Banana 43 Grs Integra",
+      "brand": "INTEGRA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra De Cereal Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal",
+      "food_type": "barra de cereal",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra de cereal apta para consumo humano, clasificada correctamente en snacks sin incluir marca, sabor ni gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "42366b76-5d37-452e-9134-d34981670eee",
+      "source_name": "Pechuga De Pollo X Kg",
+      "brand": "GRANJA PROPIA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Pechuga De Pollo",
+      "category": "carnes_pescados",
+      "subcategory": "Aves",
+      "food_type": "Carne fresca",
+      "serving_mode": "bulk_weight",
+      "confidence": 1,
+      "reasoning": "El producto es carne de pollo fresca vendida por peso (granel), clasificándose correctamente como alimento en la categoría de carnes y pescados."
+    }
+  },
+  {
+    "original_product": {
+      "id": "3eef5fa4-7639-4554-bd65-86ddd58bb0bd",
+      "source_name": "Barra Proteica Simple Chocolate 30gr",
+      "brand": "SIMPLE",
+      "package_grams": 30
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal y proteicas",
+      "food_type": "snack procesado",
+      "serving_mode": "unit",
+      "confidence": 1,
+      "reasoning": "El producto es una barra proteica, un alimento procesado de consumo directo, por lo que se clasifica como snack."
+    }
+  },
+  {
+    "original_product": {
+      "id": "bd64de33-f435-4810-932d-bd6ac5db738b",
+      "source_name": "Barra Proteica Simple Original 45gr",
+      "brand": "SIMPLE",
+      "package_grams": 45
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal y proteicas",
+      "food_type": "snack procesado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica, un alimento procesado consumido como snack. Se elimina la marca, el sabor y el gramaje del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "dd77f534-c8e9-47e5-9008-6d3bd106e53b",
+      "source_name": "Barra Proteica Simple Limon 30gr",
+      "brand": "SIMPLE",
+      "package_grams": 30
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras proteicas",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es una barra proteica apta para consumo humano, clasificada dentro de suplementos y snacks, eliminando marca, sabor y gramaje del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "2f9a6bfc-e25a-4f97-8463-2f52bca1c468",
+      "source_name": "Barra Proteica Sabor Frutilla 45 Grs Entrenuts",
+      "brand": "ENTRENUTS",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "barra nutricional",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica comestible para deportistas, clasificada dentro de suplementos, sin incluir marca, sabor ni gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "5fb41caa-de65-4705-889b-e1e74af96c1c",
+      "source_name": "Barra Proteica B3st Frutos Rojos 60gr",
+      "brand": "B3ST",
+      "package_grams": 60
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "barra nutricional",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento suplementario apto para consumo humano, clasificado como barra proteica, excluyendo marca, sabor y peso."
+    }
+  },
+  {
+    "original_product": {
+      "id": "c87d4309-cff9-450f-8150-c0b66f3a4e93",
+      "source_name": "Barra Proteica De Coco Kibar X 80 Grs",
+      "brand": "KIBAR",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "Barras de Proteína",
+      "food_type": "Procesado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Se normalizó a 'Barra Proteica' eliminando la marca Kibar, el sabor coco y el gramaje, manteniéndolo en Title Case y asignándolo a la categoría de suplementos."
+    }
+  },
+  {
+    "original_product": {
+      "id": "86d431b7-0070-4b0c-abc8-d7d78a4fd4a0",
+      "source_name": "Barra Proteica Sabor Lemon Pie 45 Grs Entrenuts",
+      "brand": "ENTRENUTS",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack proteico",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica apta para consumo humano, clasificada bajo suplementos nutricionales o snacks saludables."
+    }
+  },
+  {
+    "original_product": {
+      "id": "faf89251-7e7c-459d-ba52-dea02e222248",
+      "source_name": "Barra Proteica Sabor Dulce de Leche 43 Grs Integra",
+      "brand": "INTEGRA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack saludable",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento funcional consumido como suplemento proteico o snack, presentado en formato de unidad."
+    }
+  },
+  {
+    "original_product": {
+      "id": "35aa14c8-bc14-4439-9f1e-e99efca9ad93",
+      "source_name": "Barra Proteica De Cacao Español Kibar X 80 Grs",
+      "brand": "KIBAR",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "barra nutricional",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento suplementario procesado que se vende en formato de barra individual."
+    }
+  },
+  {
+    "original_product": {
+      "id": "d5277fab-407c-4824-8591-015bf9a75c9b",
+      "source_name": "Barra Proteica Sabor Choco Lemon 35 Grs NotCo",
+      "brand": "NotProtein Bar",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "Snacks Proteicos",
+      "food_type": "Barra nutricional",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra de proteína apta para consumo humano, clasificada correctamente dentro de suplementos y snacks proteicos, omitiendo marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "f4007829-6fb5-4eb7-ad61-216707c60807",
+      "source_name": "Barra Proteica Sabor Capuccino 180 Grs x 4 Un Simple",
+      "brand": "SIMPLE",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "barras de proteina",
+      "food_type": "snack proteico",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento procesado de tipo suplemento/snack, normalizado eliminando marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "21a1f295-7664-42b3-a54e-4cc668553a7d",
+      "source_name": "Barra Proteica Sabor Cookies y Cream 180 Grs x 4 Un Simple",
+      "brand": "SIMPLE",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra Proteica",
+      "category": "suplementos",
+      "subcategory": "Barras de proteína",
+      "food_type": "Alimento procesado",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra proteica, un alimento procesado y suplemento dietario, normalizado sin marca, sabor ni gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "fcf2a486-dd3d-456b-aef4-553597379398",
+      "source_name": "Barra de Cereal Proteica Sabor Banana 43 Grs Integra",
+      "brand": "INTEGRA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra De Cereal Proteica",
+      "category": "snacks",
+      "subcategory": "barras de cereal",
+      "food_type": "barra de cereal",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una barra de cereal proteica apta para consumo humano, se normalizó el nombre eliminando marca, sabor y gramaje, aplicando Title Case."
+    }
+  },
+  {
+    "original_product": {
+      "id": "7f10d7dc-ec7f-4d8b-bb9a-5563c237c40e",
+      "source_name": "Barra Kibar De Algarroba Y Manzana  X 80 Grs",
+      "brand": "KIBAR",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Barra De Algarroba Y Manzana",
+      "category": "snacks",
+      "subcategory": "barras de cereal",
+      "food_type": "snack dulce",
+      "serving_mode": "unit",
+      "confidence": 0.9,
+      "reasoning": "Es un producto alimenticio comestible, específicamente una barra de cereal o snack, clasificado en snacks sin incluir la marca ni el gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "14c591b8-dce5-4f83-95dc-8083b8234c34",
+      "source_name": "Medallón Sabor Calabaza x 2 Un 150 Grs NotCo",
+      "brand": "NotBurguer",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Medallón Vegano",
+      "category": "congelados",
+      "subcategory": "medallones vegetales",
+      "food_type": "preparado vegetal",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "Es un alimento congelado a base de plantas (NotCo), clasificado como medallón, quitando marca, sabor y gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "809676b3-e74b-4309-ba1a-91f0b4119573",
+      "source_name": "Aderezo Notmayo Original Notco 400 Gr",
+      "brand": "NOT MAYO",
+      "package_grams": 400
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Aderezo Vegano",
+      "category": "condimentos_salsas",
+      "subcategory": "Mayonesas y Aderezos",
+      "food_type": "Aderezo a base de vegetales",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un aderezo de origen vegetal. Se normaliza a 'Aderezo Vegano' quitando marca, sabor y gramaje, clasificándolo dentro de condimentos y salsas."
+    }
+  },
+  {
+    "original_product": {
+      "id": "6d0ac022-845a-4a41-9e49-0a4c8225341f",
+      "source_name": "Notchicken Mila Con Semillas 2 Un X 110 Grs Notco",
+      "brand": "NOTMILA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Milanesa Vegetal",
+      "category": "congelados",
+      "subcategory": "Alternativas vegetales",
+      "food_type": "Preparado congelado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una milanesa vegetal a base de plantas (Notchicken), por lo que se clasifica como congelado/alternativa vegetal, removiendo la marca y el gramaje."
+    }
+  },
+  {
+    "original_product": {
+      "id": "80df800d-1af4-4aba-805d-e57c8c2d1119",
+      "source_name": "Milanesa Sabor Semillas Congelada x 2 Un 220 Grs Notco",
+      "brand": "NOTMILA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Milanesa Vegetal",
+      "category": "congelados",
+      "subcategory": "Milanesas y rebozados vegetales",
+      "food_type": "Plato preparado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una milanesa vegetal congelada de la marca NotCo. Se excluyen marca, gramaje, cantidad y sabor (semillas) del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "fc8fb2c5-c4c3-4a78-9260-ccffac48dfa1",
+      "source_name": "Empanadas Sabor Queso y Cebolla Caramelizada x 4 Un 336 Grs NotCo",
+      "brand": "THE NOT CO",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Empanadas",
+      "category": "congelados",
+      "subcategory": "Empanadas vegetarianas",
+      "food_type": "Plato preparado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es una comida preparada congelada de origen vegetal, sin incluir marca, sabor ni gramaje en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "db3c94b5-ee55-40de-b6d1-2924e43ec48a",
+      "source_name": "Paletas Heladas Chocolate Blanco 4 Un X 240 Gr Not Icecream",
+      "brand": "NOT ICECREAM",
+      "package_grams": 240
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Paleta Helada",
+      "category": "congelados",
+      "subcategory": "Helados",
+      "food_type": "Helado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento congelado (paleta helada). Se elimina la marca, el sabor y el formato de venta del nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "634c8e17-9fad-4127-8f93-cbcc6d2a8f8b",
+      "source_name": "Helado De Frutillas Con Crema 120 Gr Not Icecream",
+      "brand": "NOT ICECREAM",
+      "package_grams": 120
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Helado",
+      "category": "congelados",
+      "subcategory": "Helados",
+      "food_type": "Helado de crema",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un helado envasado individualmente, por lo que se clasifica dentro de congelados sin incluir marcas ni sabores en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "f7fbd812-532c-42b1-9c48-b0ec7ff030ee",
+      "source_name": "Helado Banana Split 330 Gr Not Icecream",
+      "brand": "NOT ICECREAM",
+      "package_grams": 330
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Helado Vegano",
+      "category": "congelados",
+      "subcategory": "helados",
+      "food_type": "postre helado",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un helado a base vegetal, clasificado correctamente dentro de congelados y normalizado sin marcas ni sabores."
+    }
+  },
+  {
+    "original_product": {
+      "id": "98821fcb-367b-4a8b-8b72-253972c86fa7",
+      "source_name": "Bebida Vegetal Notmilk Chocolate The Not Co 1 L",
+      "brand": "NOT MILK",
+      "package_grams": 1000
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Bebida Vegetal",
+      "category": "bebidas",
+      "subcategory": "Bebidas Vegetales",
+      "food_type": "Bebida de almendras o vegetal",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es una bebida vegetal a base de plantas, sin incluir sabor ni marca en el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "0091d355-be5a-49f3-bb34-b9692eba971d",
+      "source_name": "Paletas Heladas De Chocolate Crocante 4 Un X 240 Gr Not Icecream",
+      "brand": "NOT ICECREAM",
+      "package_grams": 240
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Paleta Helada",
+      "category": "congelados",
+      "subcategory": "helados",
+      "food_type": "postre helado",
+      "serving_mode": "unit",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento congelado (paleta helada), removiendo marca, sabor y gramaje para obtener el nombre canónico."
+    }
+  },
+  {
+    "original_product": {
+      "id": "a753a79e-4773-4203-ac51-8a8907221030",
+      "source_name": "Cilantro Orgánico X Unidad",
+      "brand": "VERDULERIA PROPIA",
+      "package_grams": null
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Cilantro",
+      "category": "frutas_verduras",
+      "subcategory": "Hierbas Frescas",
+      "food_type": "Verdura",
+      "serving_mode": "unit",
+      "confidence": 1,
+      "reasoning": "El producto es cilantro fresco orgánico vendido por unidad, clasificado correctamente en frutas_verduras."
+    }
+  },
+  {
+    "original_product": {
+      "id": "0fe8d469-348a-41ed-9ff5-ae803f4084de",
+      "source_name": "Paletas Heladas Crema Americana 4 Un X 240 Gr Not Icecream®",
+      "brand": "NOT ICECREAM",
+      "package_grams": 240
+    },
+    "ai_classification": {
+      "is_food": true,
+      "canonical_name": "Paleta Helada",
+      "category": "congelados",
+      "subcategory": "Helados",
+      "food_type": "Helado",
+      "serving_mode": "packaged_volume",
+      "confidence": 0.95,
+      "reasoning": "El producto es un alimento congelado (helado en paleta), se elimina la marca, los sabores y el gramaje para obtener el nombre canónico."
+    }
+  }
+]
