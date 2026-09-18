@@ -136,6 +136,79 @@ export function toHighResImage(url) {
   return url;
 }
 
+const PET_BRANDS = new Set([
+  'dog chow', 'cat chow', 'whiskas', 'felix', 'gati', 'purina one', 'purina',
+  'pedigree', 'temptations', "pet's class", 'pets class', 'royal canin',
+  'eukanuba', 'pro plan', 'vitalcan', 'sabrositos', 'raza', 'catchow', 'dogchow',
+  'dogui', 'catui', 'sieger', 'excellent'
+]);
+
+const PET_PHRASES = [
+  'alimento para perro', 'alimento para gato', 'comida para perro', 'comida para gato',
+  'para perros', 'para gatos', 'para cachorros', 'para gatitos',
+  'snack para perro', 'snack para gato', 'snacks para gatos', 'snacks para perros',
+  'mascotas', 'pet shop', 'alimento seco para', 'alimento humedo para',
+  'adulto raza', 'cachorro raza', 'perro adulto', 'perro cachorro',
+  'gato adulto', 'gato cachorro', 'alimento balanceado'
+];
+
+/**
+ * Detecta si un ítem no corresponde a un alimento apto (librería, bazar, carbón, leña, naftalina, fórmulas para bebés)
+ */
+export function isNonFood(item) {
+  if (!item) return false;
+  const name = (item.name || '').toLowerCase().trim();
+  const brand = (item.brand || '').toLowerCase().trim();
+
+  // Librería / Bazar / No comestible
+  if (
+    name.includes('cuaderno') || name.includes('repuesto ledesma') || name.includes('resma de hoja') ||
+    (name.startsWith('chango ') && !name.includes('azúcar') && !name.includes('azucar') && !name.includes('canela')) ||
+    name.includes('naftalina') ||
+    name.includes('neo silk') ||
+    name.includes('chips de leña') || name.includes('astillas ahumadoras') || name.includes('chips ahumadores') || name.includes('pastillas de encendido')
+  ) {
+    return true;
+  }
+
+  // Fórmulas infantiles / Bebé ("los bebés no usan la app")
+  if (brand.includes('sancor bebé') || brand.includes('sancor bebe') || name.includes('sancor bebé') || name.includes('sancor bebe') || name.includes('leche infantil')) {
+    return true;
+  }
+
+  // Promo pack doble
+  if (name.includes('duopac') || (name.includes('coca cola') && name.includes('sprite') && name.includes('1.75'))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Detecta si un producto corresponde a alimento para mascotas o producto no comestible
+ */
+export function isPetFood(item) {
+  if (!item) return false;
+  if (isNonFood(item)) return true;
+  const brand = (item.brand || '').toLowerCase().trim();
+  const name = (item.name || '').toLowerCase().trim();
+  const category = (item.category || '').toLowerCase().trim();
+
+  for (const petBrand of PET_BRANDS) {
+    if (brand === petBrand || brand.startsWith(petBrand + ' ') || brand.endsWith(' ' + petBrand) || brand.includes(petBrand)) {
+      return true;
+    }
+  }
+
+  for (const phrase of PET_PHRASES) {
+    if (name.includes(phrase) || category.includes(phrase)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Normaliza cadenas de búsqueda eliminando diacríticos, mayúsculas y caracteres especiales
  */
@@ -189,7 +262,7 @@ export const MARKET_SECTIONS = [
     title: 'Frutas y Verduras',
     image: 'https://carrefourar.vteximg.com.br/arquivos/ids/886228/2509836000003_02.jpg',
     accentColor: '#EA580C',
-    categories: ['Verduras', 'Frutas', 'Frutas y Verduras', 'Frutas & Verduras'],
+    categories: ['Frutas y Verduras', 'Verduras', 'Frutas', 'Frutas & Verduras'],
   },
   {
     id: 'almacen',
@@ -217,14 +290,14 @@ export const MARKET_SECTIONS = [
     title: 'Lácteos y Quesos',
     image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/901212/7791337061385_1.jpg',
     accentColor: '#EA580C',
-    categories: ['Lácteos', 'Quesos', 'Leches', 'Quesos y Fiambres', 'Para untar', 'Lácteos y Frescos'],
+    categories: ['Lácteos y Quesos', 'Lácteos', 'Quesos', 'Leches', 'Quesos y Fiambres', 'Para untar', 'Lácteos y Frescos'],
   },
   {
     id: 'carnes',
     title: 'Carnes y Pescados',
     image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/894358/Bife-De-Chorizo-1-248166.jpg',
     accentColor: '#EA580C',
-    categories: ['Carnes & Proteínas', 'Carnes', 'Pescados', 'Pescados y Mariscos', 'Carnes y Pescados', 'Huevos & Granja'],
+    categories: ['Carnes y Pescados', 'Carnes & Proteínas', 'Carnes', 'Pescados', 'Pescados y Mariscos', 'Huevos & Granja'],
   },
   {
     id: 'bebidas',
@@ -232,10 +305,10 @@ export const MARKET_SECTIONS = [
     image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/339782/Gaseosa-CocaCola-Sabor-Liviano-15-Lt-_1.jpg',
     accentColor: '#EA580C',
     categories: [
+      'Bebidas',
       'Gaseosas',
       'Aguas',
       'Jugos e Isotónicas',
-      'Bebidas',
       'Isotónicas',
       'Bebidas Vegetales',
       'Energizantes',
@@ -264,12 +337,14 @@ export const MARKET_SECTIONS = [
     image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/307588/Bombon-Relleno-Bon-o-Bon-Original-15-Gr-_1.jpg',
     accentColor: '#EA580C',
     categories: [
+      'Golosinas y Snacks',
       'Golosinas',
       'Golosinas y Alfajores',
       'Alfajores & Dulces',
       'Dulces & Mermeladas',
       'Frutos Secos & Semillas',
       'Snacks & Copetín',
+      'Snacks',
     ],
   },
   {
@@ -277,7 +352,14 @@ export const MARKET_SECTIONS = [
     title: 'Congelados',
     image: 'https://carrefourar.vteximg.com.br/arquivos/ids/386613/7791720025208_E01.jpg',
     accentColor: '#EA580C',
-    categories: ['Congelados'],
+    categories: [
+      'Congelados',
+      'Vegetales Congelados',
+      'Hamburguesas y Nuggets',
+      'Pizzas Congeladas',
+      'Pescados Congelados',
+      'Postres y Helados',
+    ],
   },
   {
     id: 'fitness',
@@ -295,39 +377,256 @@ export const ALL_MARKET_SECTIONS = MARKET_SECTIONS;
 const CATEGORY_CACHE = new Map();
 
 /**
- * Consulta bajo demanda productos verificados de una sección en Supabase
+ * Detecta si un producto contiene procesados, congelados, golosinas, panificados,
+ * o bebidas que NO deben figurar en la categoría 'Frutas y Verduras'.
+ * Garantiza que 'Frutas y Verduras' contenga exclusivamente productos frescos.
  */
-export async function fetchProductsByCategory(sectionId, { limit = 50, externalSignal } = {}) {
+export function isExcludedFromProduce(item) {
+  if (!item) return false;
+  const name = (item.name || '').toLowerCase();
+  const brand = (item.brand || '').toLowerCase();
+
+  // Marcas y términos de congelados (McCain, Simplot, Granja del Sol, Nutree, etc.)
+  if (
+    brand.includes('mc cain') ||
+    brand.includes('mccain') ||
+    brand.includes('simplot') ||
+    name.includes('simplot') ||
+    brand.includes('granja del sol') ||
+    brand.includes('green life') ||
+    brand.includes('karinat') ||
+    brand.includes('alif agro') ||
+    brand.includes('nutree') ||
+    name.includes('nutree') ||
+    name.includes('congelad') ||
+    name.includes('supercongelad') ||
+    name.includes('baston') ||
+    name.includes('noisette') ||
+    name.includes('air fryer') ||
+    name.includes('smiles') ||
+    name.includes('papas fritas') ||
+    name.includes('helado') ||
+    name.includes('mousse') ||
+    name.includes('banana split')
+  ) {
+    return true;
+  }
+
+  // Golosinas, chocolates, Franui, alfajores y snacks
+  if (
+    name.includes('kibar') ||
+    name.includes('franui') ||
+    brand.includes('franui') ||
+    brand.includes('rapsodia') ||
+    name.includes('chocolate') ||
+    name.includes('bombon') ||
+    name.includes('alfajor') ||
+    name.includes('turron') ||
+    name.includes('oblea') ||
+    name.includes('golosina') ||
+    brand.includes('lays') ||
+    brand.includes("lay's") ||
+    brand.includes('pehuamar') ||
+    brand.includes('twistos') ||
+    brand.includes('doritos') ||
+    brand.includes('cheetos') ||
+    name.includes('snack') ||
+    name.includes('chips') ||
+    name.includes('barra ') ||
+    name.includes('barrita')
+  ) {
+    return true;
+  }
+
+  // Panificados, masas, pastas y harinas
+  if (
+    brand.includes('bimbo') ||
+    brand.includes('fargo') ||
+    brand.includes('lactal') ||
+    brand.includes('la salteña') ||
+    brand.includes('la saltena') ||
+    name.startsWith('pan ') ||
+    name.includes(' pan ') ||
+    name.includes('budin') ||
+    name.includes('pizzeta') ||
+    name.includes('gallet') ||
+    name.includes('fideo') ||
+    name.includes('ñoqui') ||
+    name.includes('noqui') ||
+    name.includes('raviol') ||
+    name.includes('tapa ') ||
+    name.includes('empanada') ||
+    name.includes('tarta')
+  ) {
+    return true;
+  }
+
+  // Almacén procesado, conservas, purés instantáneos y passata
+  if (
+    name.includes('pure de') ||
+    name.includes('puré de') ||
+    name.includes('pure instantaneo') ||
+    name.includes('passata') ||
+    name.includes('triturado') ||
+    name.includes('extracto de tomate') ||
+    name.includes('pulpa de') ||
+    name.includes('conserva') ||
+    name.includes(' en lata') ||
+    name.includes('enlatad') ||
+    name.includes('pimienta') ||
+    name.includes('oregano') ||
+    name.includes('comino') ||
+    name.includes('aji molido') ||
+    brand.includes('maggi') ||
+    brand.includes('knorr') ||
+    brand.includes('la molisana') ||
+    brand.includes('de cecco') ||
+    brand.includes('barilla')
+  ) {
+    return true;
+  }
+
+  // Lácteos y yogures
+  if (
+    name.includes('yogur') ||
+    name.includes('yogurt') ||
+    name.includes('postre') ||
+    brand.includes('dahi') ||
+    brand.includes('yogurisimo') ||
+    brand.includes('serenisima') ||
+    brand.includes('sancor') ||
+    brand.includes('milkaut')
+  ) {
+    return true;
+  }
+
+  // Bebidas y aperitivos
+  if (
+    brand.includes('gancia') ||
+    brand.includes('campari') ||
+    brand.includes('aperol') ||
+    brand.includes('cinzano') ||
+    brand.includes('branca') ||
+    brand.includes('terma') ||
+    name.includes('terma') ||
+    brand.includes('skyy') ||
+    name.includes('skyy') ||
+    name.includes('vodka') ||
+    name.includes('aperitivo') ||
+    name.includes('gaseosa') ||
+    name.includes('cerveza') ||
+    name.includes('vino')
+  ) {
+    return true;
+  }
+
+  // Frutos secos y semillas empaquetadas
+  if (
+    name.includes('mix terra') ||
+    name.includes('mix power') ||
+    name.includes('mix patagonia') ||
+    name.includes('nuez') ||
+    name.includes('nueces') ||
+    name.includes('almendra') ||
+    name.includes('mani ') ||
+    name.includes('castaña') ||
+    name.includes('semilla')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Consulta bajo demanda productos verificados de una sección en Supabase
+ * Soporta paginación infinita real por páginas (page / limit / offset)
+ * y devuelve los resultados junto con metadatos de paginación (hasMore, totalCount, nextPage).
+ */
+export async function fetchProductsByCategory(
+  sectionId,
+  { page = 0, offset = null, limit = 40, query = '', externalSignal } = {}
+) {
   const canonicalId = sectionId === 'carniceria' ? 'carnes' : sectionId === 'verduleria' ? 'frutas' : sectionId;
   const section = MARKET_SECTIONS.find((s) => s.id === canonicalId || s.id === sectionId);
-  if (!section) return [];
+  if (!section) {
+    const empty = [];
+    empty.products = empty;
+    empty.hasMore = false;
+    empty.totalCount = 0;
+    return empty;
+  }
 
-  if (CATEGORY_CACHE.has(section.id)) {
-    return CATEGORY_CACHE.get(section.id);
+  const from = offset != null ? offset : page * limit;
+  const to = from + limit - 1;
+
+  // Usar caché solo para la primera página por defecto sin búsqueda
+  const cacheKey = `${section.id}_page0`;
+  if (from === 0 && !query && CATEGORY_CACHE.has(cacheKey)) {
+    return CATEGORY_CACHE.get(cacheKey);
   }
 
   if (!isSupabaseConfigured || !supabase || externalSignal?.aborted) {
-    return [];
+    const empty = [];
+    empty.products = empty;
+    empty.hasMore = false;
+    empty.totalCount = 0;
+    return empty;
   }
 
   try {
-    const { data, error } = await supabase
+    let queryBuilder = supabase
       .from('foods')
       .select(
-        'barcode, name, brand, category, calories, protein, carbs, fats, default_portion_type, serving_size, unit_name, unit_grams, unit_calories, unit_protein, unit_carbs, unit_fats, image'
+        'barcode, name, brand, category, calories, protein, carbs, fats, default_portion_type, serving_size, unit_name, unit_grams, unit_calories, unit_protein, unit_carbs, unit_fats, image',
+        { count: 'exact' }
       )
-      .in('category', section.categories)
       .eq('status', 'approved')
       .not('image', 'is', null)
       .neq('image', '')
       .not('image', 'ilike', '%unsplash%')
       .not('name', 'ilike', '%perro%')
-      .not('name', 'ilike', '%gato%')
-      .limit(limit);
+      .not('name', 'ilike', '%gato%');
+
+    if (canonicalId === 'congelados') {
+      // Congelados incluye la categoría canónica + marcas y términos clave aunque estén en otras categorías
+      queryBuilder = queryBuilder.or(
+        'category.eq.Congelados,brand.ilike.%mc cain%,brand.ilike.%granja del sol%,brand.ilike.%green life%,brand.ilike.%karinat%,brand.ilike.%alif agro%,name.ilike.%congelad%,name.ilike.%supercongelad%'
+      );
+    } else {
+      queryBuilder = queryBuilder.in('category', section.categories);
+    }
+
+    if (canonicalId === 'frutas') {
+      // Excluir a nivel DB los no-frescos evidentes para no vaciar la página
+      queryBuilder = queryBuilder
+        .not('name', 'ilike', '%congelad%')
+        .not('name', 'ilike', '%baston%')
+        .not('name', 'ilike', '%franui%')
+        .not('name', 'ilike', '%chocolate%')
+        .not('brand', 'ilike', '%mc cain%')
+        .not('brand', 'ilike', '%granja del sol%');
+    }
+
+    if (query && query.trim()) {
+      const cleanQ = query.trim();
+      queryBuilder = queryBuilder.or(`name.ilike.%${cleanQ}%,brand.ilike.%${cleanQ}%`);
+    }
+
+    const { data, count, error } = await queryBuilder
+      .range(from, to);
 
     if (error || !data || !Array.isArray(data)) {
-      return [];
+      const empty = [];
+      empty.products = empty;
+      empty.hasMore = false;
+      empty.totalCount = 0;
+      return empty;
     }
+
+    const totalCount = count != null ? count : data.length;
+    // hasMore se basa en si hay más filas en la base de datos más allá de este lote
+    const hasMore = (from + data.length) < totalCount && data.length === limit;
 
     const seenKeys = new Set();
     const seenBarcodes = new Set();
@@ -335,6 +634,15 @@ export async function fetchProductsByCategory(sectionId, { limit = 50, externalS
 
     for (const item of data) {
       if (!item.image || isPlaceholderImage(item.image)) continue;
+      if (isPetFood(item)) continue;
+
+      // Sanitización estricta por categoría
+      if (canonicalId === 'frutas' && isExcludedFromProduce(item)) continue;
+
+      let image = item.image;
+      if (item.barcode === '7798080000025' || (image && image.includes('779/808/000/0025'))) {
+        image = 'https://jumboargentina.vteximg.com.br/arquivos/ids/925375/Proteina-En-Polvo-Ena-Sport-Chocolate-900gr-1-1062611.jpg';
+      }
 
       const foodKey = normalizeFoodKey(item.brand, item.name);
       if (seenKeys.has(foodKey)) continue;
@@ -361,18 +669,28 @@ export async function fetchProductsByCategory(sectionId, { limit = 50, externalS
         unitProtein: item.unit_protein != null ? Number(item.unit_protein) : null,
         unitCarbs: item.unit_carbs != null ? Number(item.unit_carbs) : null,
         unitFats: item.unit_fats != null ? Number(item.unit_fats) : null,
-        image: item.image || null,
+        image,
         source: 'supabase',
       });
     }
 
-    if (cleanResults.length > 0) {
-      CATEGORY_CACHE.set(sectionId, cleanResults);
+    // Enriquecer el array con metadatos de paginación para máxima compatibilidad
+    cleanResults.products = cleanResults;
+    cleanResults.hasMore = hasMore;
+    cleanResults.totalCount = totalCount;
+    cleanResults.nextPage = page + 1;
+
+    if (from === 0 && !query && cleanResults.length > 0) {
+      CATEGORY_CACHE.set(cacheKey, cleanResults);
     }
 
     return cleanResults;
   } catch (err) {
-    return [];
+    const empty = [];
+    empty.products = empty;
+    empty.hasMore = false;
+    empty.totalCount = 0;
+    return empty;
   }
 }
 
@@ -464,8 +782,16 @@ export async function searchFoodCatalog(query, externalSignal) {
 
       if (data && Array.isArray(data)) {
         for (const item of data) {
+          // Descartar alimentos para mascotas
+          if (isPetFood(item)) continue;
+
+          let image = item.image;
+          if (item.barcode === '7798080000025' || (image && image.includes('779/808/000/0025'))) {
+            image = 'https://jumboargentina.vteximg.com.br/arquivos/ids/925375/Proteina-En-Polvo-Ena-Sport-Chocolate-900gr-1-1062611.jpg';
+          }
+
           // Descartar automáticamente productos sin imagen o con placeholder de cámara
-          if (!item.image || isPlaceholderImage(item.image)) continue;
+          if (!image || isPlaceholderImage(image)) continue;
 
           // Filtrar por límite de palabras (ej: evita repollo al buscar pollo)
           if (!matchesQueryTokens(item, tokens)) continue;
@@ -495,7 +821,7 @@ export async function searchFoodCatalog(query, externalSignal) {
             unitProtein: item.unit_protein != null ? Number(item.unit_protein) : null,
             unitCarbs: item.unit_carbs != null ? Number(item.unit_carbs) : null,
             unitFats: item.unit_fats != null ? Number(item.unit_fats) : null,
-            image: item.image || null,
+            image,
             source: 'supabase',
           });
         }
@@ -533,23 +859,32 @@ export const searchOpenFoodFacts = searchFoodCatalog;
 
 /**
  * Busca un producto exclusivamente en la base de datos propietaria Zenit (Local + Supabase)
+ * Soporta variaciones de formato EAN-13, UPC-A, ceros a la izquierda y espacios.
  * CERO dependencias externas de Open Food Facts.
  */
 export async function getProductByBarcode(barcode) {
   if (!barcode) return null;
+  const raw = String(barcode).trim();
+  const digitsOnly = raw.replace(/[^0-9]/g, '');
+  const rawNoLeadingZero = digitsOnly.replace(/^0+/, '');
+  const rawWithLeadingZero = digitsOnly.length === 12 ? '0' + digitsOnly : digitsOnly;
+  const candidates = Array.from(new Set([raw, digitsOnly, rawNoLeadingZero, rawWithLeadingZero])).filter(Boolean);
 
   // 1. Revisar en productos creados por el usuario
   try {
     const customProducts = useUserStore.getState().customProducts || [];
-    const customMatch = customProducts.find((p) => p.barcode === barcode);
+    const customMatch = customProducts.find((p) => candidates.includes(p.barcode));
     if (customMatch) return customMatch;
   } catch (e) {
     // Si useUserStore aún no está listo
   }
 
   // 2. Revisar en catálogo local argentino verificado (0 ms)
-  const localMatch = POPULAR_ARGENTINE_PRODUCTS.find((p) => p.barcode === barcode);
-  if (localMatch) return localMatch;
+  const localMatch = POPULAR_ARGENTINE_PRODUCTS.find((p) => candidates.includes(p.barcode));
+  if (localMatch) {
+    if (isPetFood(localMatch)) return null;
+    return localMatch;
+  }
 
   // 3. Revisar en base de datos Supabase en la nube (<100 ms)
   if (isSupabaseConfigured && supabase) {
@@ -557,11 +892,19 @@ export async function getProductByBarcode(barcode) {
       const { data, error } = await supabase
         .from('foods')
         .select('*')
-        .eq('barcode', barcode)
+        .in('barcode', candidates)
         .eq('status', 'approved')
+        .limit(1)
         .maybeSingle();
 
       if (!error && data) {
+        if (isPetFood(data)) return null;
+
+        let image = data.image;
+        if (data.barcode === '7798080000025' || (image && image.includes('779/808/000/0025'))) {
+          image = 'https://jumboargentina.vteximg.com.br/arquivos/ids/925375/Proteina-En-Polvo-Ena-Sport-Chocolate-900gr-1-1062611.jpg';
+        }
+
         return {
           id: data.id || data.barcode,
           barcode: data.barcode,
@@ -580,7 +923,7 @@ export async function getProductByBarcode(barcode) {
           unitProtein: data.unit_protein != null ? Number(data.unit_protein) : null,
           unitCarbs: data.unit_carbs != null ? Number(data.unit_carbs) : null,
           unitFats: data.unit_fats != null ? Number(data.unit_fats) : null,
-          image: data.image || null,
+          image: image || null,
           source: 'supabase',
         };
       }
@@ -668,7 +1011,12 @@ export async function fetchCuratedCarousels() {
 
     const byBarcode = new Map();
     for (const item of data) {
-      if (!item.image || isPlaceholderImage(item.image)) continue;
+      let image = item.image;
+      if (item.barcode === '7798080000025' || (image && image.includes('779/808/000/0025'))) {
+        image = 'https://jumboargentina.vteximg.com.br/arquivos/ids/925375/Proteina-En-Polvo-Ena-Sport-Chocolate-900gr-1-1062611.jpg';
+      }
+
+      if (!image || isPlaceholderImage(image)) continue;
       byBarcode.set(item.barcode, {
         id: item.barcode,
         barcode: item.barcode,
@@ -687,7 +1035,7 @@ export async function fetchCuratedCarousels() {
         unitProtein: item.unit_protein != null ? Number(item.unit_protein) : null,
         unitCarbs: item.unit_carbs != null ? Number(item.unit_carbs) : null,
         unitFats: item.unit_fats != null ? Number(item.unit_fats) : null,
-        image: item.image,
+        image,
         source: 'supabase',
       });
     }

@@ -22,6 +22,20 @@ import { CoachChatModal } from '../components/scanner/CoachChatModal';
 import { BarcodeProductModal } from '../components/scanner/BarcodeProductModal';
 import { getProductByBarcode } from '../services/api/foodCatalogService';
 
+const BARCODE_SCANNER_SETTINGS = {
+  barcodeTypes: [
+    'ean13',
+    'ean8',
+    'upc_a',
+    'upc_e',
+    'code128',
+    'code39',
+    'qr',
+    'itf14',
+    'codabar',
+  ],
+};
+
 export default function ScanScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
@@ -299,7 +313,10 @@ export default function ScanScreen({ navigation }) {
   };
 
   // Detección y procesamiento de código de barras
-  const handleBarcodeScanned = async ({ data }) => {
+  const handleBarcodeScanned = async (event) => {
+    // Solo responder si el usuario está activamente en modo código de barras
+    if (scanMode !== 'barcode') return;
+
     if (
       isProcessingBarcodeRef.current ||
       appStateRef.current !== 'idle' ||
@@ -307,13 +324,17 @@ export default function ScanScreen({ navigation }) {
     ) {
       return;
     }
-    if (!data || typeof data !== 'string') return;
+
+    const rawData = event?.data;
+    if (!rawData || typeof rawData !== 'string') return;
+
+    const barcodeClean = rawData.trim();
+    if (!barcodeClean) return;
 
     isProcessingBarcodeRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const barcodeClean = data.trim();
       const match = await getProductByBarcode(barcodeClean);
 
       if (match) {
@@ -597,26 +618,8 @@ export default function ScanScreen({ navigation }) {
         flash={flash}
         mode="picture"
         ref={cameraRef}
-        barcodeScannerSettings={
-          scanMode === 'barcode'
-            ? {
-                barcodeTypes: [
-                  'ean13',
-                  'ean8',
-                  'upc_a',
-                  'upc_e',
-                  'code128',
-                  'code39',
-                  'qr',
-                ],
-              }
-            : undefined
-        }
-        onBarcodeScanned={
-          scanMode === 'barcode' && !isBarcodeModalVisible && appState === 'idle'
-            ? handleBarcodeScanned
-            : undefined
-        }
+        barcodeScannerSettings={BARCODE_SCANNER_SETTINGS}
+        onBarcodeScanned={handleBarcodeScanned}
       />
 
       {/* 1. Vista HUD de la cámara (idle o capturing) */}

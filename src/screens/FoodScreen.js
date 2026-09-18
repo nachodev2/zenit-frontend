@@ -13,13 +13,9 @@ import {
   Dimensions,
   ActivityIndicator,
   LayoutAnimation,
-  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Drumstick,
   Search,
@@ -90,8 +86,10 @@ const MinimalCategoryCard = React.memo(function MinimalCategoryCard({ section, o
         style={{
           width: '100%',
           height: 92,
-          backgroundColor: '#F1F5F9',
+          backgroundColor: '#FFFFFF',
           borderRadius: 20,
+          borderWidth: 1,
+          borderColor: '#F1F5F9',
           alignItems: 'center',
           justifyContent: 'center',
           padding: 8,
@@ -140,6 +138,7 @@ const CarouselProductCard = React.memo(function CarouselProductCard({ item, onPr
       onPress={onPress}
       style={{
         width: 140,
+        minHeight: 218,
         backgroundColor: '#FFFFFF',
         borderRadius: 18,
         padding: 10,
@@ -147,10 +146,11 @@ const CarouselProductCard = React.memo(function CarouselProductCard({ item, onPr
         borderColor: '#F1F5F9',
         shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
+        shadowOpacity: 0.05,
         shadowRadius: 6,
         elevation: 2,
         justifyContent: 'space-between',
+        marginVertical: 2,
       }}
     >
       {/* IMAGEN DE ESTUDIO */}
@@ -158,8 +158,10 @@ const CarouselProductCard = React.memo(function CarouselProductCard({ item, onPr
         style={{
           width: '100%',
           height: 96,
-          backgroundColor: '#F8FAFC',
+          backgroundColor: '#FFFFFF',
           borderRadius: 14,
+          borderWidth: 1,
+          borderColor: '#F1F5F9',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
@@ -269,7 +271,11 @@ const HorizontalProductCarousel = React.memo(function HorizontalProductCarousel(
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          gap: 12,
+        }}
         keyboardShouldPersistTaps="handled"
       >
         {products.map((item) => (
@@ -731,8 +737,14 @@ export default function FoodScreen({ navigation }) {
   // Estados de navegación por secciones de góndola estilo PedidosYa Market
   const [selectedSection, setSelectedSection] = useState(null); // null = grilla de secciones, o objeto sección
   const [sectionProducts, setSectionProducts] = useState([]);
+  const [sectionPage, setSectionPage] = useState(0);
+  const [sectionTotalCount, setSectionTotalCount] = useState(0);
   const [isLoadingSection, setIsLoadingSection] = useState(false);
+  const [isLoadingMoreSection, setIsLoadingMoreSection] = useState(false);
+  const [sectionHasMore, setSectionHasMore] = useState(true);
   const [sectionFilter, setSectionFilter] = useState('');
+  const [sectionSearchResults, setSectionSearchResults] = useState([]);
+  const [isSearchingSection, setIsSearchingSection] = useState(false);
   const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(false);
   const [carousels, setCarousels] = useState({ essentials: [], fitness: [], featured: [] });
 
@@ -779,6 +791,26 @@ export default function FoodScreen({ navigation }) {
     };
   }, []);
 
+  // Resetear la búsqueda y regresar al estado inicial de góndola al salir de la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setSearchQuery('');
+        setSearchResults([]);
+        setIsSearching(false);
+        setSelectedSection(null);
+        setSectionProducts([]);
+        setSectionPage(0);
+        setSectionTotalCount(0);
+        setSectionFilter('');
+        setSectionSearchResults([]);
+        setSectionHasMore(true);
+        setIsLoadingMoreSection(false);
+        setIsSearchingSection(false);
+      };
+    }, [])
+  );
+
   // Búsqueda inteligente de alto rendimiento en dos fases (0ms local + red cancelable)
   useEffect(() => {
     const trimmed = searchQuery.trim();
@@ -823,21 +855,114 @@ export default function FoodScreen({ navigation }) {
     };
   }, [searchQuery, customProducts]);
 
-  // Abrir sección de góndola bajo demanda
+  // Abrir sección de góndola bajo demanda con carga inicial de 40 productos
   const handleSelectSection = useCallback(async (section) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedSection(section);
     setSectionFilter('');
+    setSectionSearchResults([]);
+    setIsSearchingSection(false);
     setIsLoadingSection(true);
+    setSectionHasMore(true);
+    setIsLoadingMoreSection(false);
+    setSectionPage(0);
     try {
-      const products = await fetchProductsByCategory(section.id);
+      const res = await fetchProductsByCategory(section.id, { page: 0, limit: 40 });
+      const products = res.products || res;
       setSectionProducts(products);
+      setSectionHasMore(res.hasMore ?? products.length >= 40);
+      setSectionTotalCount(res.totalCount || products.length);
+      setSectionPage(0);
     } catch (e) {
       setSectionProducts([]);
+      setSectionHasMore(false);
+      setSectionTotalCount(0);
     } finally {
       setIsLoadingSection(false);
     }
   }, []);
+
+  // Carga infinita fluida al scrollear hacia el final de la sección
+  const handleLoadMoreSectionProducts = useCallback(async () => {
+    if (
+      isLoadingSection ||
+      isLoadingMoreSection ||
+      !sectionHasMore ||
+      !selectedSection ||
+      sectionFilter.trim().length > 0
+    ) {
+      return;
+    }
+
+    setIsLoadingMoreSection(true);
+    try {
+      const nextPage = sectionPage + 1;
+      const res = await fetchProductsByCategory(selectedSection.id, {
+        page: nextPage,
+        limit: 40,
+      });
+
+      const moreProducts = res.products || res;
+
+      if (!moreProducts || moreProducts.length === 0) {
+        setSectionHasMore(false);
+      } else {
+        setSectionProducts((prev) => {
+          const existingBarcodes = new Set(prev.map((p) => p.barcode || p.id));
+          const newUnique = moreProducts.filter((p) => !existingBarcodes.has(p.barcode || p.id));
+          return [...prev, ...newUnique];
+        });
+        setSectionPage(nextPage);
+        setSectionHasMore(res.hasMore ?? moreProducts.length >= 40);
+        if (res.totalCount) {
+          setSectionTotalCount(res.totalCount);
+        }
+      }
+    } catch (e) {
+      setSectionHasMore(false);
+    } finally {
+      setIsLoadingMoreSection(false);
+    }
+  }, [isLoadingSection, isLoadingMoreSection, sectionHasMore, selectedSection, sectionPage, sectionFilter]);
+
+  // Búsqueda en toda la base de datos de la categoría cuando el usuario filtra por texto
+  useEffect(() => {
+    if (!selectedSection) return;
+    const cleanFilter = sectionFilter.trim();
+    if (!cleanFilter) {
+      setSectionSearchResults([]);
+      setIsSearchingSection(false);
+      return;
+    }
+
+    setIsSearchingSection(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      try {
+        const results = await fetchProductsByCategory(selectedSection.id, {
+          query: cleanFilter,
+          limit: 60,
+          externalSignal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setSectionSearchResults(results);
+        }
+      } catch (e) {
+        if (!controller.signal.aborted) {
+          setSectionSearchResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearchingSection(false);
+        }
+      }
+    }, 280);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [sectionFilter, selectedSection]);
 
   // Volver a la grilla de secciones
   const handleBackToSections = useCallback(() => {
@@ -845,14 +970,19 @@ export default function FoodScreen({ navigation }) {
     setSelectedSection(null);
     setSectionProducts([]);
     setSectionFilter('');
+    setSectionSearchResults([]);
+    setSectionHasMore(true);
+    setIsLoadingMoreSection(false);
+    setIsSearchingSection(false);
   }, []);
 
-  // Filtro rápido de productos dentro de la sección activa
-  const filteredSectionProducts = useMemo(() => {
-    if (!sectionFilter.trim()) return sectionProducts;
-    const tokens = getQueryTokens(sectionFilter);
-    return sectionProducts.filter((item) => matchesQueryTokens(item, tokens));
-  }, [sectionProducts, sectionFilter]);
+  // Lista de productos a mostrar en la sección (búsqueda global de categoría o lista paginada)
+  const displayedSectionProducts = useMemo(() => {
+    if (sectionFilter.trim().length > 0) {
+      return sectionSearchResults;
+    }
+    return sectionProducts;
+  }, [sectionFilter, sectionSearchResults, sectionProducts]);
 
   // Cálculos dinámicos del producto seleccionado (por unidad / lata O por gramos)
   const calculatedMacros = useMemo(() => {
@@ -1517,13 +1647,19 @@ export default function FoodScreen({ navigation }) {
                   returnKeyType="search"
                   autoCorrect={false}
                 />
-                {isSearching ? (
-                  <ActivityIndicator size="small" color="#EA580C" style={{ marginLeft: 6 }} />
-                ) : searchQuery.length > 0 ? (
-                  <TouchableOpacity onPress={handleClearSearch} style={{ padding: 4 }}>
+                {isSearching && (
+                  <ActivityIndicator size="small" color="#EA580C" style={{ marginRight: 6 }} />
+                )}
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity
+                    onPress={handleClearSearch}
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    style={{ padding: 6 }}
+                    activeOpacity={0.7}
+                  >
                     <X size={16} color="#94A3B8" />
                   </TouchableOpacity>
-                ) : null}
+                )}
               </View>
             </View>
 
@@ -1617,7 +1753,7 @@ export default function FoodScreen({ navigation }) {
                 </View>
 
                 {/* SUB-BUSCADOR DENTRO DE LA SECCIÓN */}
-                <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                <View style={{ paddingHorizontal: 16, paddingBottom: 6 }}>
                   <View
                     style={{
                       flexDirection: 'row',
@@ -1634,7 +1770,7 @@ export default function FoodScreen({ navigation }) {
                     <TextInput
                       value={sectionFilter}
                       onChangeText={setSectionFilter}
-                      placeholder={`Filtrar en ${selectedSection.title.toLowerCase()}...`}
+                      placeholder={`Buscar en ${selectedSection.title.toLowerCase()}...`}
                       placeholderTextColor="#94A3B8"
                       style={{
                         flex: 1,
@@ -1646,13 +1782,43 @@ export default function FoodScreen({ navigation }) {
                       clearButtonMode="never"
                       autoCorrect={false}
                     />
+                    {isSearchingSection ? (
+                      <ActivityIndicator size="small" color="#EA580C" style={{ marginRight: 6 }} />
+                    ) : null}
                     {sectionFilter.length > 0 && (
-                      <TouchableOpacity onPress={() => setSectionFilter('')} style={{ padding: 2 }}>
+                      <TouchableOpacity onPress={() => setSectionFilter('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 2 }}>
                         <X size={14} color="#94A3B8" />
                       </TouchableOpacity>
                     )}
                   </View>
                 </View>
+
+                {/* CONTADOR DE PRODUCTOS Y GUÍA INTUITIVA PARA EL USUARIO */}
+                {!isLoadingSection && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingHorizontal: 18,
+                      paddingVertical: 4,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#64748B' }}>
+                      {sectionFilter.trim()
+                        ? `${displayedSectionProducts.length} producto${displayedSectionProducts.length === 1 ? '' : 's'} encontrado${displayedSectionProducts.length === 1 ? '' : 's'}`
+                        : sectionTotalCount > sectionProducts.length
+                        ? `${sectionProducts.length} de ${sectionTotalCount} productos`
+                        : `${sectionProducts.length} producto${sectionProducts.length === 1 ? '' : 's'} disponible${sectionProducts.length === 1 ? '' : 's'}`}
+                    </Text>
+                    {!sectionFilter.trim() && sectionHasMore && (
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#EA580C' }}>
+                        Deslizá para ver más ↓
+                      </Text>
+                    )}
+                  </View>
+                )}
 
                 {isLoadingSection ? (
                   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
@@ -1663,7 +1829,7 @@ export default function FoodScreen({ navigation }) {
                   </View>
                 ) : (
                   <FlatList
-                    data={filteredSectionProducts}
+                    data={displayedSectionProducts}
                     renderItem={renderProductItem}
                     keyExtractor={keyExtractor}
                     numColumns={2}
@@ -1682,14 +1848,41 @@ export default function FoodScreen({ navigation }) {
                     maxToRenderPerBatch={8}
                     windowSize={5}
                     removeClippedSubviews={Platform.OS === 'android'}
+                    onEndReached={handleLoadMoreSectionProducts}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={
+                      isLoadingMoreSection ? (
+                        <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}>
+                          <ActivityIndicator size="small" color="#EA580C" />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B' }}>
+                            Cargando más productos...
+                          </Text>
+                        </View>
+                      ) : !sectionHasMore && sectionProducts.length > 0 && !sectionFilter.trim() ? (
+                        <View style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#94A3B8' }}>
+                            Llegaste al final de {selectedSection.title.toLowerCase()} ({sectionProducts.length} productos)
+                          </Text>
+                        </View>
+                      ) : null
+                    }
                     ListEmptyComponent={
-                      <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 50, paddingHorizontal: 20 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#64748B', textAlign: 'center' }}>
-                          {sectionFilter
-                            ? `No encontramos productos para "${sectionFilter}" en esta sección.`
-                            : 'No hay productos disponibles en esta sección.'}
-                        </Text>
-                      </View>
+                      isSearchingSection ? (
+                        <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 50 }}>
+                          <ActivityIndicator size="small" color="#EA580C" />
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B', marginTop: 10 }}>
+                            Buscando en {selectedSection.title.toLowerCase()}...
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 50, paddingHorizontal: 20 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: '#64748B', textAlign: 'center' }}>
+                            {sectionFilter
+                              ? `No encontramos productos para "${sectionFilter}" en esta sección.`
+                              : 'No hay productos disponibles en esta sección.'}
+                          </Text>
+                        </View>
+                      )
                     }
                   />
                 )}
