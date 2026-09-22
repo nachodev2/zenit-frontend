@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 
-const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "TU_API_KEY_AQUI"; 
+const rawApiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "TU_API_KEY_AQUI"; 
+const API_KEY = rawApiKey.split(',')[0].trim();
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 export const FoodAnalysisResultSchema = z.object({

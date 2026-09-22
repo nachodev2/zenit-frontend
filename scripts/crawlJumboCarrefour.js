@@ -73,6 +73,10 @@ async function run() {
       name: 'jumbo',
       baseUrl: 'https://www.jumbo.com.ar',
       queries: [
+        // Categorías macro para catálogo amplio
+        'almacen', 'lacteos', 'bebidas', 'carnes', 'verduras', 'frutas',
+        'panaderia', 'congelados', 'quesos', 'fiambres', 'desayuno', 'merienda', 'postres',
+        // Nichos específicos y productos ancla
         'proteina', 'ena sport', 'whey protein', 'barra proteica',
         'notco', 'silk', 'leche vegetal', 'mantequilla de mani',
         'organico', 'banana', 'pechuga de pollo', 'huevos', 'palta',
@@ -82,8 +86,12 @@ async function run() {
       name: 'carrefour',
       baseUrl: 'https://www.carrefour.com.ar',
       queries: [
+        // Categorías macro para catálogo amplio
+        'almacen', 'lacteos', 'bebidas', 'carnes', 'verduras', 'frutas',
+        'panaderia', 'congelados', 'quesos', 'fiambres', 'desayuno', 'merienda', 'postres',
+        // Nichos específicos y productos ancla
         'carrefour bio', 'carrefour sin gluten', 'proteina',
-        'yogur griego', 'quinoa', 'arroz integral', 'frutos secos'
+        'yogur griego', 'quinoa', 'arroz integral', 'frutos secos',
       ],
     },
   ];
@@ -95,34 +103,52 @@ async function run() {
     console.log(`\n📦 Extrayendo data cruda de ${source.name.toUpperCase()}...`);
 
     for (const query of source.queries) {
-      process.stdout.write(`  Buscando "${query}"... `);
-      const items = await fetchVtexSearch(source.baseUrl, query, 0, 49); 
+      let offset = 0;
+      const PAGE_SIZE = 50;
+      let queryAdded = 0;
 
-      let added = 0;
-      for (const item of items) {
-        if (!item || !item.productId) continue;
-        if (seenIds.has(item.productId)) continue;
-        seenIds.add(item.productId);
+      while (true) {
+        const from = offset;
+        const to = offset + PAGE_SIZE - 1;
 
-        const categoryPath = (item.categories && item.categories.length > 0) 
-            ? item.categories[0] 
-            : null;
+        console.log(`  Buscando "${query}" (offset: ${offset})...`);
+        const items = await fetchVtexSearch(source.baseUrl, query, from, to);
 
-        const sourceUrl = item.linkText ? `${source.baseUrl}/${item.linkText}/p` : null;
+        if (!items || items.length === 0) {
+          break;
+        }
 
-        harvestedRaw.push({
-          source: source.name,
-          source_url: sourceUrl,
-          source_category_path: categoryPath,
-          raw_json: item, 
-          status: 'pending'
-        });
+        let added = 0;
+        for (const item of items) {
+          if (!item || !item.productId) continue;
+          if (seenIds.has(item.productId)) continue;
+          seenIds.add(item.productId);
 
-        added++;
+          const categoryPath = (item.categories && item.categories.length > 0) 
+              ? item.categories[0] 
+              : null;
+
+          const sourceUrl = item.linkText ? `${source.baseUrl}/${item.linkText}/p` : null;
+
+          harvestedRaw.push({
+            source: source.name,
+            source_url: sourceUrl,
+            source_category_path: categoryPath,
+            raw_json: item, 
+            status: 'pending'
+          });
+
+          added++;
+        }
+
+        queryAdded += added;
+        console.log(`    +${added} nuevos añadidos (+${items.length} recibidos en página)`);
+
+        offset += PAGE_SIZE;
+        await sleep(300);
       }
 
-      console.log(`+${added} capturados`);
-      await sleep(300); 
+      console.log(`  ✔️ Fin de búsqueda para "${query}": ${queryAdded} productos agregados.`);
     }
   }
 
@@ -135,11 +161,16 @@ async function run() {
 
   console.log(`💾 Insertando ${harvestedRaw.length} registros en Supabase (raw_scrapes)...`);
   
-  // Realizamos la inserción directa
-  const { error } = await supabase.from('raw_scrapes').insert(harvestedRaw);
+  // Inserción en bloques de 500 para evitar superar límites de payload de Supabase
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < harvestedRaw.length; i += BATCH_SIZE) {
+    const batch = harvestedRaw.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('raw_scrapes').insert(batch);
 
-  if (error) {
-    throw new Error(`❌ Error fatal insertando en Supabase: ${error.message}`);
+    if (error) {
+      throw new Error(`❌ Error fatal insertando lote en Supabase: ${error.message}`);
+    }
+    console.log(`  💾 Lote guardado: ${Math.min(i + BATCH_SIZE, harvestedRaw.length)}/${harvestedRaw.length}`);
   }
 
   console.log('✅ Inserción completada con éxito.');

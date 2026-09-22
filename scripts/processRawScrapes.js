@@ -29,6 +29,8 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Mapeo de Category Path (Reglas Duras)
  */
@@ -104,130 +106,146 @@ function parseProductData(rawName) {
 async function run() {
   console.log('🚀 Iniciando Pipeline Determinístico: RAW -> CANONICAL -> PRODUCTS');
 
-  const { data: rawItems, error: fetchError } = await supabase
-    .from('raw_scrapes')
-    .select('*')
-    .eq('status', 'pending')
-    .limit(500);
-
-  if (fetchError) {
-    console.error('❌ Error fatal obteniendo raw_scrapes:', fetchError.message);
-    process.exit(1);
-  }
-
-  if (!rawItems || rawItems.length === 0) {
-    console.log('✅ No hay items pendientes en raw_scrapes.');
-    return;
-  }
-
-  console.log(`📦 Procesando ${rawItems.length} items pendientes...`);
-
   let processedCount = 0;
   let rejectedCount = 0;
   let errorCount = 0;
+  let batchNumber = 0;
 
-  for (const raw of rawItems) {
-    try {
-      const itemJson = raw.raw_json || {};
-      const rawName = itemJson.productName || itemJson.name || 'Desconocido';
-      const brand = itemJson.brand || null;
-      const barcode = (itemJson.items && itemJson.items[0] && itemJson.items[0].ean) ? itemJson.items[0].ean : null;
-      
-      let imageUrl = null;
-      if (itemJson.items && itemJson.items[0] && itemJson.items[0].images && itemJson.items[0].images.length > 0) {
-        imageUrl = itemJson.items[0].images[0].imageUrl;
-      }
+  while (true) {
+    batchNumber++;
+    console.log(`\n📥 Consultando lote #${batchNumber} de pendientes en raw_scrapes (limit: 500)...`);
 
-      const mapResult = mapCategoryPath(raw.source_category_path);
-      
-      if (!mapResult.isFood) {
-        const { error: rejectError } = await supabase.from('raw_scrapes').update({ status: 'error' }).eq('id', raw.id);
-        if (rejectError) {
-           console.error(`❌ Error actualizando status de rechazo para ${raw.id}:`, rejectError.message);
-        }
-        rejectedCount++;
-        continue;
-      }
+    const { data: rawItems, error: fetchError } = await supabase
+      .from('raw_scrapes')
+      .select('*')
+      .eq('status', 'pending')
+      .limit(500);
 
-      const { cleanName, package_grams, selling_unit } = parseProductData(rawName);
-
-      // INSERT CANONICAL
-      const { data: canonicalData, error: canonicalError } = await supabase
-        .from('canonical_foods')
-        .insert({
-          canonical_name: cleanName,
-          display_name: cleanName,
-          category: mapResult.category,
-          food_type: 'comercial',
-          serving_mode: selling_unit === 'unit' ? 'unit' : 'packaged_volume',
-          calories_100g: 0,
-          protein_100g: 0,
-          carbs_100g: 0,
-          fats_100g: 0,
-          macro_source: 'legacy_heuristic',
-          classification_method: 'source_category_map',
-          classification_reason: `Mapeado desde: ${raw.source_category_path}`
-        })
-        .select('id')
-        .single();
-
-      if (canonicalError) {
-        throw new Error(`Fallo Insert Canonical: ${canonicalError.message}`);
-      }
-
-      if (!canonicalData || !canonicalData.id) {
-         throw new Error(`Fallo Insert Canonical: No se retornó el ID.`);
-      }
-
-      // INSERT PRODUCT
-      const { error: productError } = await supabase
-        .from('products')
-        .insert({
-          canonical_food_id: canonicalData.id,
-          barcode: barcode,
-          brand: brand,
-          source_name: rawName,
-          package_grams: package_grams,
-          selling_unit: selling_unit,
-          image: imageUrl,
-          source: raw.source,
-          status: 'pending_review'
-        });
-
-      if (productError) {
-        if (productError.code === '23505') { // Unique violation
-          console.warn(`⚠️ Duplicado de barcode ignorado para: ${rawName} (${barcode})`);
-          // Lo marcamos procesado igual porque ya existe
-        } else {
-          // Transaccionalidad manual (rollback lógico): si falló el producto, avisamos que el canónico quedó huérfano.
-          console.warn(`⚠️ Warning: El canónico ${canonicalData.id} quedó huérfano porque falló la inserción del producto.`);
-          throw new Error(`Fallo Insert Product: ${productError.message}`);
-        }
-      }
-
-      // UPDATE STATUS
-      const { error: updateError } = await supabase.from('raw_scrapes').update({ status: 'processed' }).eq('id', raw.id);
-      if (updateError) {
-          throw new Error(`Fallo Update raw_scrapes status: ${updateError.message}`);
-      }
-
-      processedCount++;
-
-    } catch (err) {
-      console.error(`❌ Error Crítico en raw_id ${raw.id}: ${err.message}`);
-      
-      // Intentamos marcar el registro con error, ignoramos si esta query misma falla por RLS.
-      await supabase.from('raw_scrapes').update({ status: 'error' }).eq('id', raw.id).catch(() => {});
-      
-      errorCount++;
+    if (fetchError) {
+      console.error('❌ Error fatal obteniendo raw_scrapes:', fetchError.message);
+      process.exit(1);
     }
+
+    if (!rawItems || rawItems.length === 0) {
+      console.log('✅ No quedan más items pendientes en raw_scrapes.');
+      break;
+    }
+
+    console.log(`📦 Procesando lote #${batchNumber} (${rawItems.length} items)...`);
+
+    let batchProcessed = 0;
+    let batchRejected = 0;
+    let batchErrors = 0;
+
+    for (const raw of rawItems) {
+      try {
+        const itemJson = raw.raw_json || {};
+        const rawName = itemJson.productName || itemJson.name || 'Desconocido';
+        const brand = itemJson.brand || null;
+        const barcode = (itemJson.items && itemJson.items[0] && itemJson.items[0].ean) ? itemJson.items[0].ean : null;
+        
+        let imageUrl = null;
+        if (itemJson.items && itemJson.items[0] && itemJson.items[0].images && itemJson.items[0].images.length > 0) {
+          imageUrl = itemJson.items[0].images[0].imageUrl;
+        }
+
+        const mapResult = mapCategoryPath(raw.source_category_path);
+        
+        if (!mapResult.isFood) {
+          const { error: rejectError } = await supabase.from('raw_scrapes').update({ status: 'error' }).eq('id', raw.id);
+          if (rejectError) {
+             console.error(`❌ Error actualizando status de rechazo para ${raw.id}:`, rejectError.message);
+          }
+          rejectedCount++;
+          batchRejected++;
+          continue;
+        }
+
+        const { cleanName, package_grams, selling_unit } = parseProductData(rawName);
+
+        // INSERT CANONICAL
+        const { data: canonicalData, error: canonicalError } = await supabase
+          .from('canonical_foods')
+          .insert({
+            canonical_name: cleanName,
+            display_name: cleanName,
+            category: mapResult.category,
+            food_type: 'comercial',
+            serving_mode: selling_unit === 'unit' ? 'unit' : 'packaged_volume',
+            calories_100g: 0,
+            protein_100g: 0,
+            carbs_100g: 0,
+            fats_100g: 0,
+            macro_source: 'legacy_heuristic',
+            classification_method: 'source_category_map',
+            classification_reason: `Mapeado desde: ${raw.source_category_path}`
+          })
+          .select('id')
+          .single();
+
+        if (canonicalError) {
+          throw new Error(`Fallo Insert Canonical: ${canonicalError.message}`);
+        }
+
+        if (!canonicalData || !canonicalData.id) {
+           throw new Error(`Fallo Insert Canonical: No se retornó el ID.`);
+        }
+
+        // INSERT PRODUCT
+        const { error: productError } = await supabase
+          .from('products')
+          .insert({
+            canonical_food_id: canonicalData.id,
+            barcode: barcode,
+            brand: brand,
+            source_name: rawName,
+            package_grams: package_grams,
+            selling_unit: selling_unit,
+            image: imageUrl,
+            source: raw.source,
+            status: 'pending_review'
+          });
+
+        if (productError) {
+          if (productError.code === '23505') { // Unique violation
+            console.warn(`⚠️ Duplicado de barcode ignorado para: ${rawName} (${barcode})`);
+            // Lo marcamos procesado igual porque ya existe
+          } else {
+            // Transaccionalidad manual (rollback lógico): si falló el producto, avisamos que el canónico quedó huérfano.
+            console.warn(`⚠️ Warning: El canónico ${canonicalData.id} quedó huérfano porque falló la inserción del producto.`);
+            throw new Error(`Fallo Insert Product: ${productError.message}`);
+          }
+        }
+
+        // UPDATE STATUS
+        const { error: updateError } = await supabase.from('raw_scrapes').update({ status: 'processed' }).eq('id', raw.id);
+        if (updateError) {
+            throw new Error(`Fallo Update raw_scrapes status: ${updateError.message}`);
+        }
+
+        processedCount++;
+        batchProcessed++;
+
+      } catch (err) {
+        console.error(`❌ Error Crítico en raw_id ${raw.id}: ${err.message}`);
+        
+        // Intentamos marcar el registro con error, ignoramos si esta query misma falla por RLS.
+        await supabase.from('raw_scrapes').update({ status: 'error' }).eq('id', raw.id).catch(() => {});
+        
+        errorCount++;
+        batchErrors++;
+      }
+    }
+
+    console.log(`📊 Progreso Lote #${batchNumber}: ${batchProcessed} procesados, ${batchRejected} no comida, ${batchErrors} errores. (Total acumulado: ${processedCount})`);
+    await sleep(500);
   }
 
   console.log('----------------------------------------------------');
-  console.log(`✅ Finalizado.`);
-  console.log(`📊 Procesados correctamente: ${processedCount}`);
-  console.log(`🚫 Rechazados (No comida): ${rejectedCount}`);
-  console.log(`⚠️ Errores (Falla SQL/Duplicados): ${errorCount}`);
+  console.log(`🎉 Pipeline Completo Finalizado.`);
+  console.log(`📊 Total procesados correctamente: ${processedCount}`);
+  console.log(`🚫 Total rechazados (No comida): ${rejectedCount}`);
+  console.log(`⚠️ Total errores (Falla SQL/Duplicados): ${errorCount}`);
   console.log('----------------------------------------------------');
 }
 
@@ -235,4 +253,3 @@ run().catch(err => {
     console.error('❌ Error global de ejecución:', err.message);
     process.exit(1);
 });
-

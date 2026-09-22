@@ -44,6 +44,7 @@ import {
   Snowflake,
   Dumbbell,
   Store,
+  Tag,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -612,6 +613,11 @@ const ProductCard = React.memo(function ProductCard({
   onToggleFavorite,
   columnWidth,
 }) {
+  const displayName = item.canonical_name || item.name;
+  const displayBrand = item.matched_brand || item.brand;
+  const calories = Math.round(Number(item.calories_100g != null ? item.calories_100g : item.calories) || 0);
+  const protein = Number(Number(item.protein_100g != null ? item.protein_100g : item.protein || 0).toFixed(1));
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
@@ -673,32 +679,67 @@ const ProductCard = React.memo(function ProductCard({
         </TouchableOpacity>
       </View>
 
-      {/* INFORMACIÓN DEL PRODUCTO: SOLO MARCA Y NOMBRE */}
+      {/* INFORMACIÓN DEL PRODUCTO: MARCA, NOMBRE Y MACROS */}
       <View style={{ marginTop: 10, paddingHorizontal: 2 }}>
-        <Text
-          style={{
-            fontSize: 10,
-            fontWeight: '800',
-            color: '#94A3B8',
-            textTransform: 'uppercase',
-            letterSpacing: 0.6,
-          }}
-          numberOfLines={1}
-        >
-          {item.brand || 'Alimento'}
-        </Text>
+        {displayBrand ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+            {item.matched_brand ? <Tag size={10} color="#EA580C" /> : null}
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '800',
+                color: item.matched_brand ? '#EA580C' : '#94A3B8',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+              numberOfLines={1}
+            >
+              {displayBrand}
+            </Text>
+          </View>
+        ) : null}
+
         <Text
           style={{
             fontSize: 13,
             fontWeight: '800',
             color: '#0F172A',
-            marginTop: 2,
+            marginTop: 1,
             lineHeight: 17,
           }}
           numberOfLines={2}
         >
-          {item.name}
+          {displayName}
         </Text>
+
+        {/* Macros informativos cada 100g */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            paddingTop: 6,
+            borderTopWidth: 1,
+            borderTopColor: '#F8FAFC',
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <Flame size={12} color="#EA580C" />
+            <Text style={{ fontSize: 12, fontWeight: '800', color: '#0F172A' }}>
+              {calories}
+            </Text>
+            <Text style={{ fontSize: 9, fontWeight: '700', color: '#94A3B8' }}>kcal</Text>
+          </View>
+
+          {protein > 0 ? (
+            <View style={{ backgroundColor: '#F0F9FF', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#0284C7' }}>
+                {protein}g P
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -1052,7 +1093,8 @@ export default function FoodScreen({ navigation }) {
   const favoritesSet = useMemo(() => {
     const set = new Set();
     (favorites || []).forEach((f) => {
-      if (f?.name) set.add(f.name.toLowerCase().trim());
+      const foodName = f?.canonical_name || f?.name;
+      if (foodName) set.add(foodName.toLowerCase().trim());
     });
     return set;
   }, [favorites]);
@@ -1068,18 +1110,38 @@ export default function FoodScreen({ navigation }) {
   // Abrir detalle del producto
   const handleOpenProductDetail = useCallback((product) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedProduct(product);
+    const normalized = {
+      ...product,
+      id: product.id,
+      name: product.canonical_name || product.name,
+      canonical_name: product.canonical_name || product.name,
+      brand: product.matched_brand || product.brand || 'Genérico',
+      matched_brand: product.matched_brand || null,
+      calories: Number(product.calories_100g != null ? product.calories_100g : product.calories) || 0,
+      protein: Number(product.protein_100g != null ? product.protein_100g : product.protein) || 0,
+      carbs: Number(product.carbs_100g != null ? product.carbs_100g : product.carbs) || 0,
+      fats: Number(product.fats_100g != null ? product.fats_100g : product.fats) || 0,
+      calories_100g: Number(product.calories_100g != null ? product.calories_100g : product.calories) || 0,
+      protein_100g: Number(product.protein_100g != null ? product.protein_100g : product.protein) || 0,
+      carbs_100g: Number(product.carbs_100g != null ? product.carbs_100g : product.carbs) || 0,
+      fats_100g: Number(product.fats_100g != null ? product.fats_100g : product.fats) || 0,
+      unitGrams: product.unitGrams || 100,
+      defaultPortionType: product.defaultPortionType || 'grams',
+      servingSize: product.servingSize || '100g',
+    };
+    setSelectedProduct(normalized);
 
-    const preferUnit = product.defaultPortionType === 'unit' || !!product.unitName;
+    const preferUnit = normalized.defaultPortionType === 'unit' && !!normalized.unitName;
     setPortionMode(preferUnit ? 'unit' : 'grams');
     setUnitCount(1);
-    setProductGrams(product.unitGrams || 100);
+    setProductGrams(normalized.unitGrams || 100);
   }, []);
 
   // Renderizador memoizado de cada tarjeta
   const renderProductItem = useCallback(
     ({ item }) => {
-      const isFav = favoritesSet.has((item.name || '').toLowerCase().trim());
+      const foodName = ((item.canonical_name || item.name) || '').toLowerCase().trim();
+      const isFav = favoritesSet.has(foodName);
       return (
         <ProductCard
           item={item}
@@ -1095,7 +1157,7 @@ export default function FoodScreen({ navigation }) {
 
   // Extractor de claves seguro y rápido
   const keyExtractor = useCallback((item, index) => {
-    return String(item.id || item.barcode || `${item.name}-${item.brand}-${index}`);
+    return String(item.id || item.barcode || `${item.canonical_name || item.name}-${item.matched_brand || item.brand}-${index}`);
   }, []);
 
   // Estado vacío o spinner de carga para FlatList
@@ -1274,12 +1336,13 @@ export default function FoodScreen({ navigation }) {
     if (!selectedProduct) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    const displayName = selectedProduct.canonical_name || selectedProduct.name;
     const portionLabel = portionMode === 'unit'
       ? `${unitCount} ${unitCount > 1 ? 'unidades' : 'unidad'} (${selectedProduct.unitName || selectedProduct.servingSize || ''})`
       : `${productGrams}g`;
 
     addConsumedFood({
-      name: `${selectedProduct.name} - ${portionLabel}`,
+      name: `${displayName} - ${portionLabel}`,
       calories: calculatedMacros.calories,
       protein: calculatedMacros.protein,
       carbs: calculatedMacros.carbs,
@@ -1287,7 +1350,7 @@ export default function FoodScreen({ navigation }) {
       ingredients: [],
     });
 
-    const addedName = selectedProduct.name;
+    const addedName = displayName;
     const addedCals = calculatedMacros.calories;
     setSelectedProduct(null);
 
@@ -1310,7 +1373,7 @@ export default function FoodScreen({ navigation }) {
 
     addToRecipeCart(selectedProduct, effectiveGrams);
 
-    const prodName = selectedProduct.name;
+    const prodName = selectedProduct.canonical_name || selectedProduct.name;
     const currentCount = recipeCart.length + 1;
     setSelectedProduct(null);
 
@@ -2415,10 +2478,10 @@ export default function FoodScreen({ navigation }) {
 
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 11, fontWeight: '800', color: '#EA580C', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                      {selectedProduct?.brand || 'Alimento'}
+                      {selectedProduct?.matched_brand || selectedProduct?.brand || 'Alimento'}
                     </Text>
                     <Text style={{ fontSize: 18, fontWeight: '900', color: '#0F172A', marginTop: 1 }}>
-                      {selectedProduct?.name}
+                      {selectedProduct?.canonical_name || selectedProduct?.name}
                     </Text>
                   </View>
                 </View>

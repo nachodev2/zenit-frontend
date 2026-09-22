@@ -13,10 +13,11 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 // Uso estricto de la Service Role Key para hacer bypass del RLS
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const geminiApiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const rawGeminiKey = (process.env.GEMINI_API_KEYS || process.env.EXPO_PUBLIC_GEMINI_API_KEY || '').split(',')[0].trim();
+const geminiApiKey = rawGeminiKey;
 
 if (!supabaseUrl || !supabaseKey || !geminiApiKey) {
-  console.error('❌ Faltan credenciales en el .env (Asegurate de tener SUPABASE_SERVICE_ROLE_KEY y EXPO_PUBLIC_GEMINI_API_KEY)');
+  console.error('❌ Faltan credenciales en el .env (Asegurate de tener SUPABASE_SERVICE_ROLE_KEY y GEMINI_API_KEYS o EXPO_PUBLIC_GEMINI_API_KEY)');
   process.exit(1);
 }
 

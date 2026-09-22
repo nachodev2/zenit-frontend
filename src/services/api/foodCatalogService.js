@@ -756,73 +756,47 @@ export async function searchFoodCatalog(query, externalSignal) {
 
   const supabaseResults = [];
 
-  // TIER 2: Consultar Supabase en la nube (<100ms) si está configurado
+  // TIER 2: Supabase RPC 'search_zenit_foods' en la nube (<100ms)
   if (isSupabaseConfigured && supabase && !externalSignal?.aborted) {
     try {
-      let queryBuilder = supabase
-        .from('foods')
-        .select(
-          'barcode, name, brand, category, calories, protein, carbs, fats, default_portion_type, serving_size, unit_name, unit_grams, unit_calories, unit_protein, unit_carbs, unit_fats, image'
-        )
-        .eq('status', 'approved')
-        .not('image', 'is', null)
-        .neq('image', '')
-        .not('image', 'ilike', '%unsplash%');
+      const { data, error } = await supabase.rpc('search_zenit_foods', {
+        search_term: cleanQuery,
+      });
 
-      if (tokens.length <= 1) {
-        queryBuilder = queryBuilder.or(`name.ilike.%${cleanQuery}%,brand.ilike.%${cleanQuery}%,category.ilike.%${cleanQuery}%`);
-      } else {
-        // Multi-palabra (ej: "leche descremada", "coca zero"): cada token debe coincidir en name o brand
-        for (const token of tokens.slice(0, 3)) {
-          queryBuilder = queryBuilder.or(`name.ilike.%${token}%,brand.ilike.%${token}%`);
-        }
-      }
-
-      const { data } = await queryBuilder.limit(60);
-
-      if (data && Array.isArray(data)) {
+      if (!error && data && Array.isArray(data)) {
         for (const item of data) {
-          // Descartar alimentos para mascotas
-          if (isPetFood(item)) continue;
-
-          let image = item.image;
-          if (item.barcode === '7798080000025' || (image && image.includes('779/808/000/0025'))) {
-            image = 'https://jumboargentina.vteximg.com.br/arquivos/ids/925375/Proteina-En-Polvo-Ena-Sport-Chocolate-900gr-1-1062611.jpg';
-          }
-
-          // Descartar automáticamente productos sin imagen o con placeholder de cámara
-          if (!image || isPlaceholderImage(image)) continue;
-
-          // Filtrar por límite de palabras (ej: evita repollo al buscar pollo)
-          if (!matchesQueryTokens(item, tokens)) continue;
-
-          const foodKey = normalizeFoodKey(item.brand, item.name);
+          const foodKey = normalizeFoodKey(item.matched_brand, item.canonical_name);
           if (seenKeys.has(foodKey)) continue;
-          if (item.barcode && seenBarcodes.has(item.barcode)) continue;
-
           seenKeys.add(foodKey);
-          if (item.barcode) seenBarcodes.add(item.barcode);
+
+          const calories = Math.round(Number(item.calories_100g) || 0);
+          const protein = Number(Number(item.protein_100g || 0).toFixed(1));
+          const carbs = Number(Number(item.carbs_100g || 0).toFixed(1));
+          const fats = Number(Number(item.fats_100g || 0).toFixed(1));
 
           supabaseResults.push({
-            id: item.id || item.barcode,
-            barcode: item.barcode || '',
-            name: item.name,
-            brand: item.brand || 'Marca registrada',
+            id: item.id,
+            barcode: '',
+            name: item.canonical_name,
+            canonical_name: item.canonical_name,
+            brand: item.matched_brand || 'Genérico',
+            matched_brand: item.matched_brand || null,
             category: item.category || 'Alimento',
-            servingSize: item.serving_size || `${item.unit_grams || 100}g`,
-            unitName: item.unit_name || '1 porción',
-            unitGrams: Number(item.unit_grams) || 100,
-            defaultPortionType: item.default_portion_type || 'unit',
-            calories: Number(item.calories) || 0,
-            protein: Number(item.protein) || 0,
-            carbs: Number(item.carbs) || 0,
-            fats: Number(item.fats) || 0,
-            unitCalories: item.unit_calories != null ? Number(item.unit_calories) : null,
-            unitProtein: item.unit_protein != null ? Number(item.unit_protein) : null,
-            unitCarbs: item.unit_carbs != null ? Number(item.unit_carbs) : null,
-            unitFats: item.unit_fats != null ? Number(item.unit_fats) : null,
-            image,
-            source: 'supabase',
+            servingSize: '100g',
+            unitName: '100g',
+            unitGrams: 100,
+            defaultPortionType: 'grams',
+            calories,
+            protein,
+            carbs,
+            fats,
+            calories_100g: calories,
+            protein_100g: protein,
+            carbs_100g: carbs,
+            fats_100g: fats,
+            macro_source: item.macro_source,
+            image: item.image || null,
+            source: 'supabase_rpc',
           });
         }
       }
