@@ -258,115 +258,83 @@ export function matchesQueryTokens(item, queryTokens) {
 export const MARKET_SECTIONS = [
   // TOP 6 CATEGORÍAS (Visibles de entrada en grilla 3x2)
   {
-    id: 'frutas',
+    id: 'frutas_verduras',
     title: 'Frutas y Verduras',
     image: 'https://carrefourar.vteximg.com.br/arquivos/ids/886228/2509836000003_02.jpg',
-    accentColor: '#EA580C',
-    categories: ['Frutas y Verduras', 'Verduras', 'Frutas', 'Frutas & Verduras'],
+    accentColor: '#16A34A',
   },
   {
-    id: 'almacen',
-    title: 'Almacén',
-    image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/373038/Arroz-Molinos-Ala-Doble-Carolina-1-Kg-_1.jpg',
-    accentColor: '#EA580C',
-    categories: [
-      'Almacén',
-      'Pastas & Arroces',
-      'Pastas y arroces',
-      'Pastas Frescas',
-      'Pastas & Masas',
-      'Pastas & Arroz',
-      'Pastas',
-      'Legumbres & Granos',
-      'Conservas',
-      'Aceites y Aderezos',
-      'Aceites',
-      'Aderezos',
-      'Condimentos',
-    ],
+    id: 'carnes_pescados',
+    title: 'Carnes y Pescados',
+    image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/894358/Bife-De-Chorizo-1-248166.jpg',
+    accentColor: '#DC2626',
   },
   {
     id: 'lacteos',
     title: 'Lácteos y Quesos',
     image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/901212/7791337061385_1.jpg',
-    accentColor: '#EA580C',
-    categories: ['Lácteos y Quesos', 'Lácteos', 'Quesos', 'Leches', 'Quesos y Fiambres', 'Para untar', 'Lácteos y Frescos'],
+    accentColor: '#0284C7',
   },
   {
-    id: 'carnes',
-    title: 'Carnes y Pescados',
-    image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/894358/Bife-De-Chorizo-1-248166.jpg',
-    accentColor: '#EA580C',
-    categories: ['Carnes y Pescados', 'Carnes & Proteínas', 'Carnes', 'Pescados', 'Pescados y Mariscos', 'Huevos & Granja'],
+    id: 'panificados',
+    title: 'Panadería y Masas',
+    image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/366731/Pan-de-Hamburguesa-Bimbo-Artesano-4-Ud-_1.jpg',
+    accentColor: '#D97706',
+  },
+  {
+    id: 'cereales_legumbres',
+    title: 'Cereales y Granos',
+    image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/373038/Arroz-Molinos-Ala-Doble-Carolina-1-Kg-_1.jpg',
+    accentColor: '#CA8A04',
   },
   {
     id: 'bebidas',
     title: 'Bebidas',
     image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/339782/Gaseosa-CocaCola-Sabor-Liviano-15-Lt-_1.jpg',
-    accentColor: '#EA580C',
-    categories: [
-      'Bebidas',
-      'Gaseosas',
-      'Aguas',
-      'Jugos e Isotónicas',
-      'Isotónicas',
-      'Bebidas Vegetales',
-      'Energizantes',
-      'Cervezas',
-      'Vinos',
-    ],
+    accentColor: '#0891B2',
   },
-  {
-    id: 'panaderia',
-    title: 'Panadería',
-    image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/366731/Pan-de-Hamburguesa-Bimbo-Artesano-4-Ud-_1.jpg',
-    accentColor: '#EA580C',
-    categories: [
-      'Panadería',
-      'Panadería y Pastelería',
-      'Panificados',
-      'Panificados & Galletitas',
-      'Galletitas',
-      'Galletitas y Cereales',
-    ],
-  },
-  // 3 CATEGORÍAS EXPANDIBLES ("Más categorías  ⌵")
+  // CATEGORÍAS EXPANDIBLES ("Más categorías ⌵")
   {
     id: 'snacks',
-    title: 'Golosinas y Snacks',
+    title: 'Snacks y Dulces',
     image: 'https://ardiaprod.vteximg.com.br/arquivos/ids/307588/Bombon-Relleno-Bon-o-Bon-Original-15-Gr-_1.jpg',
     accentColor: '#EA580C',
-    categories: [
-      'Golosinas y Snacks',
-      'Golosinas',
-      'Golosinas y Alfajores',
-      'Alfajores & Dulces',
-      'Dulces & Mermeladas',
-      'Frutos Secos & Semillas',
-      'Snacks & Copetín',
-      'Snacks',
-    ],
   },
   {
     id: 'congelados',
     title: 'Congelados',
     image: 'https://carrefourar.vteximg.com.br/arquivos/ids/386613/7791720025208_E01.jpg',
-    accentColor: '#EA580C',
-    categories: [
-      'Congelados',
-      'Vegetales Congelados',
-      'Hamburguesas y Nuggets',
-      'Pizzas Congeladas',
-      'Pescados Congelados',
-      'Postres y Helados',
-    ],
+    accentColor: '#2563EB',
   },
   {
-    id: 'fitness',
+    id: 'suplementos',
     title: 'Suplementos',
     image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/925375/Proteina-En-Polvo-Ena-Sport-Chocolate-900gr-1-1062611.jpg',
-    accentColor: '#EA580C',
-    categories: ['Suplementos', 'Fitness & Suplementos', 'Cereales & Granos', 'Cereales & Avena'],
+    accentColor: '#7C3AED',
+  },
+  {
+    id: 'conservas',
+    title: 'Conservas y Dulces',
+    image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/880371/Mermelada-Frambuesa-Patagonia-Berries-320-Gr-1-1044873.jpg?v=638911389739100000',
+    accentColor: '#C026D3',
+  },
+  {
+    id: 'condimentos_salsas',
+    title: 'Condimentos y Salsas',
+    image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/757719/Cacao-Amargo-Puro-En-Polvo-Sin-Tacc-Dicomere-200g-1-940318.jpg?v=638031863434670000',
+    accentColor: '#B45309',
+  },
+  {
+    id: 'aceites_grasas',
+    title: 'Aceites y Grasas',
+    image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/865024/Aceite-De-Palta-100puro-X-250ml-Chia-Graal-1-1034850.jpg?v=638809545698600000',
+    accentColor: '#65A30D',
+  },
+  {
+    id: 'huevos',
+    title: 'Huevos y Granja',
+    image: 'https://jumboargentina.vteximg.com.br/arquivos/ids/188696/Huevos-Avicoper-Color-Huevos-De-Color-Avicoper-12-U-1-25041.jpg?v=636383496879400000',
+    accentColor: '#F59E0B',
   },
 ];
 
@@ -377,179 +345,12 @@ export const ALL_MARKET_SECTIONS = MARKET_SECTIONS;
 const CATEGORY_CACHE = new Map();
 
 /**
- * Detecta si un producto contiene procesados, congelados, golosinas, panificados,
- * o bebidas que NO deben figurar en la categoría 'Frutas y Verduras'.
- * Garantiza que 'Frutas y Verduras' contenga exclusivamente productos frescos.
+ * Consulta la base de datos V2 (canonical_foods con LEFT JOIN en products)
+ * para listar alimentos de una categoría específica con soporte de paginación y filtro.
  */
-export function isExcludedFromProduce(item) {
-  if (!item) return false;
-  const name = (item.name || '').toLowerCase();
-  const brand = (item.brand || '').toLowerCase();
-
-  // Marcas y términos de congelados (McCain, Simplot, Granja del Sol, Nutree, etc.)
-  if (
-    brand.includes('mc cain') ||
-    brand.includes('mccain') ||
-    brand.includes('simplot') ||
-    name.includes('simplot') ||
-    brand.includes('granja del sol') ||
-    brand.includes('green life') ||
-    brand.includes('karinat') ||
-    brand.includes('alif agro') ||
-    brand.includes('nutree') ||
-    name.includes('nutree') ||
-    name.includes('congelad') ||
-    name.includes('supercongelad') ||
-    name.includes('baston') ||
-    name.includes('noisette') ||
-    name.includes('air fryer') ||
-    name.includes('smiles') ||
-    name.includes('papas fritas') ||
-    name.includes('helado') ||
-    name.includes('mousse') ||
-    name.includes('banana split')
-  ) {
-    return true;
-  }
-
-  // Golosinas, chocolates, Franui, alfajores y snacks
-  if (
-    name.includes('kibar') ||
-    name.includes('franui') ||
-    brand.includes('franui') ||
-    brand.includes('rapsodia') ||
-    name.includes('chocolate') ||
-    name.includes('bombon') ||
-    name.includes('alfajor') ||
-    name.includes('turron') ||
-    name.includes('oblea') ||
-    name.includes('golosina') ||
-    brand.includes('lays') ||
-    brand.includes("lay's") ||
-    brand.includes('pehuamar') ||
-    brand.includes('twistos') ||
-    brand.includes('doritos') ||
-    brand.includes('cheetos') ||
-    name.includes('snack') ||
-    name.includes('chips') ||
-    name.includes('barra ') ||
-    name.includes('barrita')
-  ) {
-    return true;
-  }
-
-  // Panificados, masas, pastas y harinas
-  if (
-    brand.includes('bimbo') ||
-    brand.includes('fargo') ||
-    brand.includes('lactal') ||
-    brand.includes('la salteña') ||
-    brand.includes('la saltena') ||
-    name.startsWith('pan ') ||
-    name.includes(' pan ') ||
-    name.includes('budin') ||
-    name.includes('pizzeta') ||
-    name.includes('gallet') ||
-    name.includes('fideo') ||
-    name.includes('ñoqui') ||
-    name.includes('noqui') ||
-    name.includes('raviol') ||
-    name.includes('tapa ') ||
-    name.includes('empanada') ||
-    name.includes('tarta')
-  ) {
-    return true;
-  }
-
-  // Almacén procesado, conservas, purés instantáneos y passata
-  if (
-    name.includes('pure de') ||
-    name.includes('puré de') ||
-    name.includes('pure instantaneo') ||
-    name.includes('passata') ||
-    name.includes('triturado') ||
-    name.includes('extracto de tomate') ||
-    name.includes('pulpa de') ||
-    name.includes('conserva') ||
-    name.includes(' en lata') ||
-    name.includes('enlatad') ||
-    name.includes('pimienta') ||
-    name.includes('oregano') ||
-    name.includes('comino') ||
-    name.includes('aji molido') ||
-    brand.includes('maggi') ||
-    brand.includes('knorr') ||
-    brand.includes('la molisana') ||
-    brand.includes('de cecco') ||
-    brand.includes('barilla')
-  ) {
-    return true;
-  }
-
-  // Lácteos y yogures
-  if (
-    name.includes('yogur') ||
-    name.includes('yogurt') ||
-    name.includes('postre') ||
-    brand.includes('dahi') ||
-    brand.includes('yogurisimo') ||
-    brand.includes('serenisima') ||
-    brand.includes('sancor') ||
-    brand.includes('milkaut')
-  ) {
-    return true;
-  }
-
-  // Bebidas y aperitivos
-  if (
-    brand.includes('gancia') ||
-    brand.includes('campari') ||
-    brand.includes('aperol') ||
-    brand.includes('cinzano') ||
-    brand.includes('branca') ||
-    brand.includes('terma') ||
-    name.includes('terma') ||
-    brand.includes('skyy') ||
-    name.includes('skyy') ||
-    name.includes('vodka') ||
-    name.includes('aperitivo') ||
-    name.includes('gaseosa') ||
-    name.includes('cerveza') ||
-    name.includes('vino')
-  ) {
-    return true;
-  }
-
-  // Frutos secos y semillas empaquetadas
-  if (
-    name.includes('mix terra') ||
-    name.includes('mix power') ||
-    name.includes('mix patagonia') ||
-    name.includes('nuez') ||
-    name.includes('nueces') ||
-    name.includes('almendra') ||
-    name.includes('mani ') ||
-    name.includes('castaña') ||
-    name.includes('semilla')
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Consulta bajo demanda productos verificados de una sección en Supabase
- * Soporta paginación infinita real por páginas (page / limit / offset)
- * y devuelve los resultados junto con metadatos de paginación (hasMore, totalCount, nextPage).
- */
-export async function fetchProductsByCategory(
-  sectionId,
-  { page = 0, offset = null, limit = 40, query = '', externalSignal } = {}
-) {
-  const canonicalId = sectionId === 'carniceria' ? 'carnes' : sectionId === 'verduleria' ? 'frutas' : sectionId;
-  const section = MARKET_SECTIONS.find((s) => s.id === canonicalId || s.id === sectionId);
-  if (!section) {
+export async function fetchProductsByCategory(sectionId, options = {}) {
+  const { page = 0, limit = 40, offset, query = '', externalSignal } = options;
+  if (!sectionId) {
     const empty = [];
     empty.products = empty;
     empty.hasMore = false;
@@ -557,11 +358,22 @@ export async function fetchProductsByCategory(
     return empty;
   }
 
+  // Normalización retrocompatible de IDs viejos ('frutas' -> 'frutas_verduras', 'carnes' -> 'carnes_pescados')
+  let categoryKey = sectionId;
+  if (sectionId === 'frutas' || sectionId === 'verduleria') categoryKey = 'frutas_verduras';
+  if (sectionId === 'carnes' || sectionId === 'carniceria') categoryKey = 'carnes_pescados';
+  if (sectionId === 'panaderia') categoryKey = 'panificados';
+  if (sectionId === 'almacen') categoryKey = 'cereales_legumbres';
+  if (sectionId === 'fitness') categoryKey = 'suplementos';
+
+  const section = MARKET_SECTIONS.find((s) => s.id === categoryKey || s.id === sectionId);
+  const targetCategory = section ? section.id : categoryKey;
+
   const from = offset != null ? offset : page * limit;
   const to = from + limit - 1;
 
   // Usar caché solo para la primera página por defecto sin búsqueda
-  const cacheKey = `${section.id}_page0`;
+  const cacheKey = `${targetCategory}_page${page}_${query || ''}`;
   if (from === 0 && !query && CATEGORY_CACHE.has(cacheKey)) {
     return CATEGORY_CACHE.get(cacheKey);
   }
@@ -576,45 +388,36 @@ export async function fetchProductsByCategory(
 
   try {
     let queryBuilder = supabase
-      .from('foods')
+      .from('canonical_foods')
       .select(
-        'barcode, name, brand, category, calories, protein, carbs, fats, default_portion_type, serving_size, unit_name, unit_grams, unit_calories, unit_protein, unit_carbs, unit_fats, image',
+        `
+          id,
+          canonical_name,
+          display_name,
+          category,
+          calories_100g,
+          protein_100g,
+          carbs_100g,
+          fats_100g,
+          macro_source,
+          products (
+            id,
+            brand,
+            image,
+            status
+          )
+        `,
         { count: 'exact' }
       )
-      .eq('status', 'approved')
-      .not('image', 'is', null)
-      .neq('image', '')
-      .not('image', 'ilike', '%unsplash%')
-      .not('name', 'ilike', '%perro%')
-      .not('name', 'ilike', '%gato%');
-
-    if (canonicalId === 'congelados') {
-      // Congelados incluye la categoría canónica + marcas y términos clave aunque estén en otras categorías
-      queryBuilder = queryBuilder.or(
-        'category.eq.Congelados,brand.ilike.%mc cain%,brand.ilike.%granja del sol%,brand.ilike.%green life%,brand.ilike.%karinat%,brand.ilike.%alif agro%,name.ilike.%congelad%,name.ilike.%supercongelad%'
-      );
-    } else {
-      queryBuilder = queryBuilder.in('category', section.categories);
-    }
-
-    if (canonicalId === 'frutas') {
-      // Excluir a nivel DB los no-frescos evidentes para no vaciar la página
-      queryBuilder = queryBuilder
-        .not('name', 'ilike', '%congelad%')
-        .not('name', 'ilike', '%baston%')
-        .not('name', 'ilike', '%franui%')
-        .not('name', 'ilike', '%chocolate%')
-        .not('brand', 'ilike', '%mc cain%')
-        .not('brand', 'ilike', '%granja del sol%');
-    }
+      .eq('category', targetCategory)
+      .order('canonical_name', { ascending: true });
 
     if (query && query.trim()) {
       const cleanQ = query.trim();
-      queryBuilder = queryBuilder.or(`name.ilike.%${cleanQ}%,brand.ilike.%${cleanQ}%`);
+      queryBuilder = queryBuilder.ilike('canonical_name', `%${cleanQ}%`);
     }
 
-    const { data, count, error } = await queryBuilder
-      .range(from, to);
+    const { data, count, error } = await queryBuilder.range(from, to);
 
     if (error || !data || !Array.isArray(data)) {
       const empty = [];
@@ -625,56 +428,46 @@ export async function fetchProductsByCategory(
     }
 
     const totalCount = count != null ? count : data.length;
-    // hasMore se basa en si hay más filas en la base de datos más allá de este lote
     const hasMore = (from + data.length) < totalCount && data.length === limit;
 
-    const seenKeys = new Set();
-    const seenBarcodes = new Set();
-    const cleanResults = [];
+    const cleanResults = data.map((item) => {
+      // Priorizar el producto comercial activo con packshot disponible
+      const activeProduct =
+        (item.products || []).find((p) => p.status === 'active' && p.image) ||
+        (item.products || []).find((p) => p.image) ||
+        (item.products || [])[0];
 
-    for (const item of data) {
-      if (!item.image || isPlaceholderImage(item.image)) continue;
-      if (isPetFood(item)) continue;
+      const calories = Math.round(Number(item.calories_100g) || 0);
+      const protein = Number(Number(item.protein_100g || 0).toFixed(1));
+      const carbs = Number(Number(item.carbs_100g || 0).toFixed(1));
+      const fats = Number(Number(item.fats_100g || 0).toFixed(1));
 
-      // Sanitización estricta por categoría
-      if (canonicalId === 'frutas' && isExcludedFromProduce(item)) continue;
+      return {
+        id: item.id,
+        barcode: '',
+        name: item.canonical_name,
+        canonical_name: item.canonical_name,
+        brand: activeProduct?.brand || 'Genérico',
+        matched_brand: activeProduct?.brand || null,
+        category: item.category || (section ? section.title : 'Alimento'),
+        servingSize: '100g',
+        unitName: '100g',
+        unitGrams: 100,
+        defaultPortionType: 'grams',
+        calories,
+        protein,
+        carbs,
+        fats,
+        calories_100g: calories,
+        protein_100g: protein,
+        carbs_100g: carbs,
+        fats_100g: fats,
+        macro_source: item.macro_source || 'ai_estimated',
+        image: activeProduct?.image || null,
+        source: 'canonical_foods',
+      };
+    });
 
-      let image = item.image;
-      if (item.barcode === '7798080000025' || (image && image.includes('779/808/000/0025'))) {
-        image = 'https://jumboargentina.vteximg.com.br/arquivos/ids/925375/Proteina-En-Polvo-Ena-Sport-Chocolate-900gr-1-1062611.jpg';
-      }
-
-      const foodKey = normalizeFoodKey(item.brand, item.name);
-      if (seenKeys.has(foodKey)) continue;
-      if (item.barcode && seenBarcodes.has(item.barcode)) continue;
-
-      seenKeys.add(foodKey);
-      if (item.barcode) seenBarcodes.add(item.barcode);
-
-      cleanResults.push({
-        id: item.id || item.barcode,
-        barcode: item.barcode || '',
-        name: item.name,
-        brand: item.brand || 'Marca registrada',
-        category: item.category || section.title,
-        servingSize: item.serving_size || `${item.unit_grams || 100}g`,
-        unitName: item.unit_name || '1 porción',
-        unitGrams: Number(item.unit_grams) || 100,
-        defaultPortionType: item.default_portion_type || 'unit',
-        calories: Number(item.calories) || 0,
-        protein: Number(item.protein) || 0,
-        carbs: Number(item.carbs) || 0,
-        fats: Number(item.fats) || 0,
-        unitCalories: item.unit_calories != null ? Number(item.unit_calories) : null,
-        unitProtein: item.unit_protein != null ? Number(item.unit_protein) : null,
-        unitCarbs: item.unit_carbs != null ? Number(item.unit_carbs) : null,
-        unitFats: item.unit_fats != null ? Number(item.unit_fats) : null,
-        image,
-        source: 'supabase',
-      });
-    }
-
-    // Enriquecer el array con metadatos de paginación para máxima compatibilidad
     cleanResults.products = cleanResults;
     cleanResults.hasMore = hasMore;
     cleanResults.totalCount = totalCount;
